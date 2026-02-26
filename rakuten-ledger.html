@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cash Back Ledger</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f7f7f7; color: #222; }
+
+    /* ── Header ── */
+    .header {
+      background: #c00;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header svg { width: 28px; height: 28px; }
+    .header h1 { color: #fff; font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+
+    /* ── Layout ── */
+    .container { max-width: 760px; margin: 0 auto; padding: 28px 16px 60px; }
+    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .page-subtitle { color: #888; font-size: 14px; margin-bottom: 24px; }
+
+    /* ── Card ── */
+    .card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.07); margin-bottom: 20px; }
+
+    /* ── Section label ── */
+    .section-label {
+      padding: 10px 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #999;
+      background: #fafafa;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    /* ── Row ── */
+    .row {
+      display: grid;
+      grid-template-columns: 110px 1fr 110px 90px;
+      align-items: center;
+      padding: 14px 20px;
+      border-bottom: 1px solid #f3f3f3;
+      gap: 8px;
+    }
+    .row:last-child { border-bottom: none; }
+    .row.clickable { cursor: pointer; transition: background 0.14s; }
+    .row.clickable:hover { background: #f9f6ff; }
+    .row.payment.clickable:hover { background: #f3f0ff; }
+
+    .row-date { font-size: 13px; color: #aaa; }
+    .row-merchant { font-size: 15px; font-weight: 600; }
+    .row-merchant-sub { font-size: 12px; color: #bbb; margin-top: 2px; }
+    .row-amount { font-size: 15px; font-weight: 700; text-align: right; }
+    .row-amount.muted { color: #ccc; font-weight: 400; }
+    .row-amount.payment-amt { color: #6D28D9; font-size: 17px; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-confirmed  { background: #ECFDF5; color: #059669; }
+    .badge-ineligible { background: #F5F5F5; color: #aaa; }
+    .badge-pending    { background: #FFFBEB; color: #D97706; }
+    .badge-paid       { background: #EDE9FE; color: #6D28D9; }
+
+    /* ── Payment row hint ── */
+    .row.payment .row-merchant { color: #6D28D9; }
+
+    /* ── Featured / throbbing row (full row) ── */
+    .row.featured {
+      position: relative;
+      overflow: hidden;
+    }
+    #rowConfettiCanvas {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .row.featured::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: #7C3AED;
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* ── Shimmer row ── */
+    .row.shimmer {
+      position: relative;
+      overflow: hidden;
+    }
+    .row.shimmer::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(100deg,
+        transparent 20%,
+        rgba(255,255,255,.75) 50%,
+        transparent 80%
+      );
+      transform: translateX(-100%);
+      animation: shimmerSweep 3.5s ease-in-out infinite;
+      animation-delay: 1.2s;
+    }
+    @keyframes shimmerSweep {
+      0%        { transform: translateX(-120%); }
+      35%, 100% { transform: translateX(220%); }
+    }
+
+    /* ══════════════════════════════════
+       MODAL — Redesigned
+    ══════════════════════════════════ */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
+    .overlay.active { display: flex; }
+
+    .modal {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      height: auto;
+      border-radius: 24px;
+      background: #EDEAFF;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: sheetUp .35s cubic-bezier(.4,0,.2,1) both;
+    }
+    @keyframes sheetUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+
+    /* Corner blobs */
+    .blob {
+      position: absolute;
+      background: #C4B5FD;
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: .45;
+    }
+    .blob-tl { width: 230px; height: 230px; top: -115px; left: -115px; animation: blobIn .45s ease .08s both; }
+    .blob-tr { width: 150px; height: 150px; top: -75px;  right: -75px; animation: blobIn .45s ease .14s both; }
+    .blob-bl { width: 180px; height: 180px; bottom: -90px; left: -90px; animation: blobIn .45s ease .18s both; }
+    .blob-br { width: 130px; height: 130px; bottom: -65px; right: -65px; animation: blobIn .45s ease .22s both; }
+    @keyframes blobIn {
+      from { transform: scale(0); }
+      to   { transform: scale(1); }
+    }
+
+    /* Close */
+    .modal-close {
+      position: absolute;
+      top: 20px; right: 20px;
+      background: #fff;
+      border: none;
+      color: #333;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      font-size: 15px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.12);
+      z-index: 10;
+      transition: background .15s;
+    }
+    .modal-close:hover { background: #f0edff; }
+
+    /* Confetti canvas */
+    #confettiCanvas {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* Content */
+    .modal-content {
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px 20px;
+      text-align: center;
+    }
+
+    /* Wallet */
+    .wallet-scene {
+      margin-bottom: 16px;
+      animation: walletFlyIn .55s cubic-bezier(.34,1.56,.64,1) .2s both;
+    }
+    @keyframes walletFlyIn {
+      from { transform: translateY(50px) rotate(20deg) scale(.5); opacity: 0; }
+      to   { transform: translateY(0)    rotate(0deg)  scale(1);  opacity: 1; }
+    }
+    .wallet-svg { width: 150px; height: 150px; }
+
+    /* Headline */
+    .modal-headline {
+      color: #1a1230;
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 14px;
+      animation: fadeUp .4s ease .42s both;
+    }
+
+    /* Amount pill */
+    .amount-pill {
+      background: #DDD6FE;
+      border-radius: 16px;
+      padding: 14px 40px;
+      width: 100%;
+      max-width: 300px;
+      margin-bottom: 12px;
+      animation: fadeUp .4s ease .52s both;
+    }
+    .pill-amount {
+      color: #6D28D9;
+      font-size: 30px;
+      font-weight: 700;
+      display: block;
+    }
+    .pill-sub {
+      color: #555;
+      font-size: 13px;
+      margin-top: 3px;
+      display: block;
+    }
+
+    /* Quarterly note */
+    .quarterly-note {
+      color: #888;
+      font-size: 12px;
+      line-height: 1.55;
+      margin-bottom: 14px;
+      animation: fadeUp .4s ease .60s both;
+    }
+    .quarterly-note a { color: #6D28D9; text-decoration: underline; }
+
+    /* Referral card */
+    .referral-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 12px 16px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+      margin-bottom: 14px;
+      animation: fadeUp .4s ease .68s both;
+    }
+    .referral-icon { font-size: 32px; flex-shrink: 0; }
+    .referral-text { flex: 1; }
+    .referral-text strong { font-size: 14px; color: #1a1230; display: block; margin-bottom: 2px; }
+    .referral-text span   { font-size: 12px; color: #666; line-height: 1.35; }
+    .referral-chevron { color: #bbb; font-size: 20px; flex-shrink: 0; }
+
+    /* CTA */
+    .modal-cta {
+      background: #7C3AED;
+      color: #fff;
+      border: none;
+      border-radius: 99px;
+      padding: 15px 32px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      transition: background .15s, transform .15s;
+      animation: fadeUp .4s ease .75s both;
+    }
+    .modal-cta:hover  { background: #6D28D9; transform: translateY(-1px); }
+    .modal-cta:active { transform: translateY(0); }
+
+    @keyframes twinkle {
+      0%,100% { opacity: 1;   transform: scale(1)   rotate(0deg);  }
+      50%      { opacity: .25; transform: scale(.65) rotate(18deg); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Page-turn row (Nike) ── */
+    .row.page-turn {
+      position: relative;
+      transform-origin: left center;
+      transition: transform 0.45s cubic-bezier(.4,0,.2,1);
+    }
+    .row.page-turn:hover {
+      transform: perspective(700px) rotateY(-22deg);
+      z-index: 5;
+    }
+    .row.page-turn::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0; bottom: 0;
+      width: 50%;
+      background: linear-gradient(to right, transparent, rgba(0,0,0,0.09));
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.45s ease;
+    }
+    .row.page-turn:hover::after { opacity: 1; }
+
+    /* ── Twinkle row ── */
+    .row.twinkle { position: relative; }
+    .row-sparkle {
+      position: absolute;
+      pointer-events: none;
+      color: #FCD34D;
+      animation: twinkle 2s ease-in-out infinite;
+      line-height: 1;
+      user-select: none;
+    }
+
+    /* ══════════════════════════════════
+       OLD MODAL — Dark purple (First Payment)
+    ══════════════════════════════════ */
+    .overlay-old {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(3px);
+      z-index: 200;
+      justify-content: center;
+      align-items: flex-end;
+    }
+    @media (min-width: 480px) {
+      .overlay-old { align-items: center; padding: 24px; }
+    }
+    .overlay-old.active { display: flex; }
+
+    .modal-old {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      border-radius: 28px 28px 0 0;
+      background: linear-gradient(160deg, #5B21B6 0%, #7C3AED 45%, #9333EA 100%);
+      padding: 36px 24px 32px;
+      text-align: center;
+      overflow: hidden;
+      box-shadow: 0 -8px 40px rgba(109,40,217,.35), 0 0 0 1px rgba(255,255,255,.08);
+      animation: sheetUp .4s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @media (min-width: 480px) {
+      .modal-old { border-radius: 28px; animation: popIn .4s cubic-bezier(.34,1.56,.64,1) both; }
+    }
+    @keyframes popIn {
+      from { transform: scale(.75) translateY(24px); opacity: 0; }
+      to   { transform: scale(1)   translateY(0);    opacity: 1; }
+    }
+    .modal-old .old-close {
+      position: absolute;
+      top: 14px; right: 16px;
+      background: rgba(255,255,255,.18);
+      border: none;
+      color: #fff;
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .modal-old .old-close:hover { background: rgba(255,255,255,.3); }
+    .modal-old .sparkle {
+      position: absolute;
+      pointer-events: none;
+      animation: twinkle 2s ease-in-out infinite;
+    }
+    .modal-old .s1 { top:14px; left:22px; font-size:22px; animation-delay:0s;  color:#FCD34D; }
+    .modal-old .s2 { top:32px; right:48px; font-size:14px; animation-delay:.4s; color:#FDE68A; }
+    .modal-old .s3 { top:80px; left:10px; font-size:12px; animation-delay:.8s;  color:#FBBF24; }
+    .modal-old .s4 { bottom:70px; right:14px; font-size:24px; animation-delay:.2s; color:#FCD34D; }
+    .modal-old .s5 { bottom:100px; left:20px; font-size:16px; animation-delay:1s; color:#FDE68A; }
+    .modal-old .s6 { top:55%; right:8px; font-size:10px; animation-delay:.6s;   color:#FBBF24; }
+    #confettiCanvasOld {
+      position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+    }
+    .modal-old .old-wallet {
+      width: 88px; height: 88px;
+      margin: 0 auto 18px;
+      background: linear-gradient(135deg, #4C1D95, #5B21B6);
+      border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 44px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.25);
+      animation: walletPop .55s cubic-bezier(.34,1.56,.64,1) .15s both;
+    }
+    @keyframes walletPop {
+      from { transform: scale(0) rotate(-12deg); opacity: 0; }
+      to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+    }
+    .modal-old .old-congrats  { color:rgba(255,255,255,.85); font-size:15px; font-weight:600; margin-bottom:4px; animation:fadeUp .45s ease .25s both; }
+    .modal-old .old-headline  { color:#fff; font-size:24px; font-weight:800; margin-bottom:10px; animation:fadeUp .45s ease .32s both; }
+    .modal-old .old-amount    { color:#FCD34D; font-size:48px; font-weight:900; letter-spacing:-1px; line-height:1; margin-bottom:8px; animation:fadeUp .45s ease .38s both; }
+    .modal-old .old-via       { color:rgba(255,255,255,.7); font-size:14px; margin-bottom:24px; animation:fadeUp .45s ease .44s both; }
+    .modal-old .old-divider   { height:1px; background:rgba(255,255,255,.15); margin:0 0 20px; }
+    .modal-old .old-referral  { background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.2); border-radius:16px; padding:14px 16px; margin-bottom:20px; animation:fadeUp .45s ease .52s both; }
+    .modal-old .old-referral p { color:rgba(255,255,255,.9); font-size:14px; line-height:1.55; }
+    .modal-old .old-referral strong { color:#FCD34D; }
+    .modal-old .old-cta { background:#fff; color:#6D28D9; border:none; border-radius:99px; padding:15px 32px; font-size:16px; font-weight:700; cursor:pointer; width:100%; transition:transform .15s, box-shadow .15s; animation:fadeUp .45s ease .58s both; }
+    .modal-old .old-cta:hover  { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.18); }
+    .modal-old .old-cta:active { transform:translateY(0); }
+
+    /* ── Tracking badge ── */
+    .badge-tracking { background: #FEF3C7; color: #D97706; }
+    .badge-tracking::before {
+      content: '';
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      margin-right: 4px;
+      vertical-align: middle;
+      animation: trackPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes trackPulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.25; }
+    }
+
+    /* ── First-order row (Expedia) ── */
+    .row.first-order { position: relative; }
+    .row.first-order::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: #D97706;
+      border-radius: 0 2px 2px 0;
+    }
+    .row.first-order .row-merchant-sub { color: #D97706; font-weight: 500; }
+
+    /* ══════════════════════════════════
+       EDU MODAL — First Order explainer
+    ══════════════════════════════════ */
+    .overlay-edu {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
+    .overlay-edu.active { display: flex; }
+
+    .modal-edu {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      border-radius: 24px;
+      background: #FFFBF0;
+      overflow: hidden;
+      animation: sheetUp .35s cubic-bezier(.4,0,.2,1) both;
+    }
+
+    .edu-content { padding: 52px 24px 24px; }
+
+    .edu-header { text-align: center; margin-bottom: 28px; }
+    .edu-emoji  { font-size: 52px; display: block; margin-bottom: 10px; animation: walletFlyIn .5s cubic-bezier(.34,1.56,.64,1) .15s both; }
+    .edu-headline { color: #1a1230; font-size: 22px; font-weight: 700; margin-bottom: 6px; animation: fadeUp .4s ease .35s both; }
+    .edu-sub { color: #666; font-size: 14px; line-height: 1.5; animation: fadeUp .4s ease .45s both; }
+    .edu-sub strong { color: #1a1230; }
+
+    /* Steps */
+    .edu-steps { margin-bottom: 18px; }
+    .edu-step { display: flex; gap: 14px; align-items: flex-start; }
+    .step-left { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+    .step-connector { width: 2px; flex: 1; min-height: 14px; background: #E5E7EB; margin: 3px 0; }
+
+    .step-indicator {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .step-done     { background: #D1FAE5; color: #059669; }
+    .step-active   { background: #FEF3C7; color: #D97706; animation: stepPulse 2s ease-in-out infinite; }
+    .step-upcoming { background: #F3F0FF; color: #C4B5FD; font-size: 18px; }
+    @keyframes stepPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(217,119,6,.3); }
+      50%      { box-shadow: 0 0 0 7px rgba(217,119,6,0); }
+    }
+
+    .step-body { padding: 6px 0 18px; flex: 1; }
+    .step-label { font-size: 14px; font-weight: 600; color: #1a1230; margin-bottom: 3px; }
+    .step-label.dim { color: #9CA3AF; }
+    .step-desc  { font-size: 12px; color: #888; line-height: 1.5; }
+
+    /* Info cards */
+    .edu-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 10px;
+      animation: fadeUp .4s ease .85s both;
+    }
+    .edu-card-icon { font-size: 20px; flex-shrink: 0; line-height: 1.4; }
+    .edu-card-text { font-size: 12px; color: #555; line-height: 1.55; }
+    .edu-card-text strong { color: #1a1230; }
+
+    .edu-cta {
+      background: #D97706;
+      color: #fff;
+      border: none;
+      border-radius: 99px;
+      padding: 15px 32px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 16px;
+      transition: background .15s, transform .15s;
+      animation: fadeUp .4s ease .95s both;
+    }
+    .edu-cta:hover  { background: #B45309; transform: translateY(-1px); }
+    .edu-cta:active { transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="40" height="40" rx="8" fill="white" fill-opacity="0.15"/>
+    <text x="5" y="30" font-size="22" fill="white">🛍</text>
+  </svg>
+  <h1>Rakuten</h1>
+</div>
+
+<!-- Page content -->
+<div class="container">
+  <h2 class="page-title">Cash Back Ledger</h2>
+  <p class="page-subtitle">Your earnings &amp; payment history</p>
+
+  <div class="card">
+
+    <!-- Payments -->
+    <div class="section-label">Payments</div>
+
+    <div class="row payment clickable featured"
+         onclick="openModal('$351.06', 'PayPal', 'Nov 15, 2024')">
+      <canvas id="rowConfettiCanvas"></canvas>
+      <div class="row-date">Nov 15, 2024</div>
+      <div>
+        <div class="row-merchant">Payment Issued</div>
+        <div class="row-merchant-sub">Via PayPal</div>
+      </div>
+      <div><span class="badge badge-paid">Paid</span></div>
+      <div class="row-amount payment-amt">$351.06</div>
+    </div>
+
+    <div class="row payment clickable twinkle"
+         onclick="openOldModal('$45.50', 'PayPal', 'Feb 15, 2024')">
+      <span class="row-sparkle" style="top:6px;  left:12%;  font-size:14px; animation-delay:0s">✦</span>
+      <span class="row-sparkle" style="bottom:6px; left:28%; font-size:9px;  animation-delay:0.7s">✦</span>
+      <span class="row-sparkle" style="top:8px;  left:55%;  font-size:11px; animation-delay:1.3s">✦</span>
+      <span class="row-sparkle" style="bottom:7px; right:22%; font-size:13px; animation-delay:0.4s">✦</span>
+      <span class="row-sparkle" style="top:50%;  right:10%; font-size:8px;  animation-delay:1.8s; transform:translateY(-50%)">✦</span>
+      <div class="row-date">Feb 15, 2024</div>
+      <div>
+        <div class="row-merchant">First Payment</div>
+        <div class="row-merchant-sub">Via PayPal</div>
+      </div>
+      <div><span class="badge badge-paid">Paid</span></div>
+      <div class="row-amount payment-amt">$45.50</div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="section-label">Transactions</div>
+
+    <div class="row clickable shimmer" onclick="openModal('$42.00', 'Macy\'s', 'Oct 22, 2024')">
+      <div class="row-date">Oct 22, 2024</div>
+      <div>
+        <div class="row-merchant">Macy's</div>
+        <div class="row-merchant-sub">Department Store · 6%</div>
+      </div>
+      <div><span class="badge badge-confirmed">Confirmed</span></div>
+      <div class="row-amount">$42.00</div>
+    </div>
+
+    <div class="row">
+      <div class="row-date">Oct 18, 2024</div>
+      <div>
+        <div class="row-merchant">Target</div>
+        <div class="row-merchant-sub">Retail · 1%</div>
+      </div>
+      <div><span class="badge badge-ineligible">Ineligible</span></div>
+      <div class="row-amount muted">—</div>
+    </div>
+
+    <div class="row clickable page-turn" onclick="openModal('$18.50', 'Nike', 'Oct 10, 2024')">
+      <div class="row-date">Oct 10, 2024</div>
+      <div>
+        <div class="row-merchant">Nike</div>
+        <div class="row-merchant-sub">Athletic · 4%</div>
+      </div>
+      <div><span class="badge badge-confirmed">Confirmed</span></div>
+      <div class="row-amount">$18.50</div>
+    </div>
+
+    <div class="row">
+      <div class="row-date">Sep 30, 2024</div>
+      <div>
+        <div class="row-merchant">Walmart</div>
+        <div class="row-merchant-sub">Retail · 2%</div>
+      </div>
+      <div><span class="badge badge-ineligible">Ineligible</span></div>
+      <div class="row-amount muted">—</div>
+    </div>
+
+    <div class="row clickable" onclick="openModal('$29.75', 'Sephora', 'Sep 21, 2024')">
+      <div class="row-date">Sep 21, 2024</div>
+      <div>
+        <div class="row-merchant">Sephora</div>
+        <div class="row-merchant-sub">Beauty · 7%</div>
+      </div>
+      <div><span class="badge badge-confirmed">Confirmed</span></div>
+      <div class="row-amount">$29.75</div>
+    </div>
+
+    <div class="row clickable" onclick="openModal('$15.30', 'Gap', 'Sep 14, 2024')">
+      <div class="row-date">Sep 14, 2024</div>
+      <div>
+        <div class="row-merchant"><span onclick="event.stopPropagation(); playCashRegister();" style="cursor:pointer">Gap</span></div>
+        <div class="row-merchant-sub">Apparel · 5%</div>
+      </div>
+      <div><span class="badge badge-pending">Pending</span></div>
+      <div class="row-amount">$15.30</div>
+    </div>
+
+    <div class="row clickable first-order" onclick="openEduModal()">
+      <div class="row-date">Sep 3, 2024</div>
+      <div>
+        <div class="row-merchant">Expedia</div>
+        <div class="row-merchant-sub">Travel · 3% · First Rakuten purchase</div>
+      </div>
+      <div><span class="badge badge-tracking">Tracking</span></div>
+      <div class="row-amount">$12.80</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Modal ── -->
+<div class="overlay" id="overlay" onclick="overlayClick(event)">
+  <div class="modal" id="modal">
+
+    <!-- Corner blobs -->
+    <div class="blob blob-tl"></div>
+    <div class="blob blob-tr"></div>
+    <div class="blob blob-bl"></div>
+    <div class="blob blob-br"></div>
+
+    <!-- Confetti canvas -->
+    <canvas id="confettiCanvas"></canvas>
+
+    <!-- Close -->
+    <button class="modal-close" onclick="closeModal()">✕</button>
+
+    <!-- Scrollable content -->
+    <div class="modal-content">
+
+      <!-- Wallet SVG illustration -->
+      <div class="wallet-scene">
+        <svg class="wallet-svg" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+          <!-- White starburst -->
+          <g transform="translate(82,102)" stroke="white" stroke-linecap="round">
+            <line x1="0" y1="-62" x2="0" y2="62" stroke-width="14" opacity=".85"/>
+            <line x1="-62" y1="0" x2="62" y2="0" stroke-width="14" opacity=".85"/>
+            <line x1="-44" y1="-44" x2="44" y2="44" stroke-width="11" opacity=".75"/>
+            <line x1="44" y1="-44" x2="-44" y2="44" stroke-width="11" opacity=".75"/>
+            <line x1="-23" y1="-58" x2="23" y2="58" stroke-width="7" opacity=".45"/>
+            <line x1="23" y1="-58" x2="-23" y2="58" stroke-width="7" opacity=".45"/>
+            <line x1="-58" y1="-23" x2="58" y2="23" stroke-width="7" opacity=".45"/>
+            <line x1="-58" y1="23" x2="58" y2="-23" stroke-width="7" opacity=".45"/>
+          </g>
+          <!-- Green bills -->
+          <g transform="translate(68,78) rotate(-22)">
+            <rect x="-27" y="-19" width="54" height="36" rx="5" fill="#4CAF50"/>
+            <rect x="-22" y="-13" width="44" height="24" rx="3" fill="#81C784" opacity=".45"/>
+          </g>
+          <g transform="translate(84,71) rotate(-6)">
+            <rect x="-27" y="-19" width="54" height="36" rx="5" fill="#388E3C"/>
+            <rect x="-22" y="-13" width="44" height="24" rx="3" fill="#66BB6A" opacity=".45"/>
+          </g>
+          <g transform="translate(100,76) rotate(9)">
+            <rect x="-27" y="-19" width="54" height="36" rx="5" fill="#2E7D32"/>
+            <rect x="-22" y="-13" width="44" height="24" rx="3" fill="#4CAF50" opacity=".45"/>
+          </g>
+          <!-- Wallet body with diagonal stripes -->
+          <clipPath id="wc"><path d="M34 90 L84 77 L138 90 L134 145 L38 145 Z"/></clipPath>
+          <path d="M34 90 L84 77 L138 90 L134 145 L38 145 Z" fill="#7C3AED"/>
+          <g clip-path="url(#wc)" stroke="#9B5CF6" stroke-width="13" opacity=".35">
+            <line x1="-5"  y1="77" x2="65"  y2="148"/>
+            <line x1="22"  y1="77" x2="92"  y2="148"/>
+            <line x1="49"  y1="77" x2="119" y2="148"/>
+            <line x1="76"  y1="77" x2="146" y2="148"/>
+            <line x1="103" y1="77" x2="173" y2="148"/>
+            <line x1="130" y1="77" x2="200" y2="148"/>
+          </g>
+          <!-- Green checkmark badge -->
+          <circle cx="124" cy="132" r="19" fill="white"/>
+          <circle cx="124" cy="132" r="16" fill="#2E7D32"/>
+          <path d="M115 132 L121 139 L133 123" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- Purple + sparkles -->
+          <g fill="#8B5CF6" opacity=".65">
+            <path d="M150 62 l1.6 4.2 4.2 1.6 -4.2 1.6 -1.6 4.2 -1.6 -4.2 -4.2 -1.6 4.2 -1.6 Z"/>
+            <path d="M26  94 l1.2 3.2 3.2 1.2 -3.2 1.2 -1.2 3.2 -1.2 -3.2 -3.2 -1.2 3.2 -1.2 Z"/>
+            <path d="M34 132 l1   2.8 2.8 1   -2.8 1   -1   2.8 -1   -2.8 -2.8 -1   2.8 -1   Z"/>
+            <path d="M108 46 l1.2 3.2 3.2 1.2 -3.2 1.2 -1.2 3.2 -1.2 -3.2 -3.2 -1.2 3.2 -1.2 Z"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Headline -->
+      <div class="modal-headline" id="modalHeadline">You got paid!</div>
+
+      <!-- Amount pill -->
+      <div class="amount-pill">
+        <span class="pill-amount" id="modalAmount">$351.06</span>
+        <span class="pill-sub" id="modalVia">sent to your PayPal</span>
+      </div>
+
+      <!-- Quarterly note -->
+      <p class="quarterly-note">
+        After this, your Cash Back is sent quarterly.<br>
+        <a href="#">How do payments work?</a>
+      </p>
+
+      <!-- Referral card -->
+      <div class="referral-card">
+        <div class="referral-icon">🎁</div>
+        <div class="referral-text">
+          <strong>Want more Cash Back?</strong>
+          <span>Refer a friend and you'll both get $30.</span>
+        </div>
+        <div class="referral-chevron">›</div>
+      </div>
+
+      <!-- CTA -->
+      <button class="modal-cta">Keep It Going</button>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Old Modal (dark purple — First Payment) ── -->
+<div class="overlay-old" id="overlayOld" onclick="overlayOldClick(event)">
+  <div class="modal-old" id="modalOld">
+    <span class="sparkle s1">✦</span>
+    <span class="sparkle s2">✦</span>
+    <span class="sparkle s3">✦</span>
+    <span class="sparkle s4">✦</span>
+    <span class="sparkle s5">✦</span>
+    <span class="sparkle s6">✦</span>
+    <canvas id="confettiCanvasOld"></canvas>
+    <button class="old-close" onclick="closeOldModal()">✕</button>
+    <div class="old-wallet">💰</div>
+    <div class="old-congrats">Congrats!</div>
+    <div class="old-headline" id="oldHeadline">You got paid!</div>
+    <div class="old-amount" id="oldAmount">$45.50</div>
+    <div class="old-via" id="oldVia">Sent to your PayPal · Feb 15, 2024</div>
+    <div class="old-divider"></div>
+    <div class="old-referral">
+      <p>Want more Cash Back? <strong>Refer a friend</strong> and you'll both get <strong>$30</strong> when they make their first purchase. 🎉</p>
+    </div>
+    <button class="old-cta">Keep It Going →</button>
+  </div>
+</div>
+
+<!-- ── Edu Modal (First Order explainer — Expedia) ── -->
+<div class="overlay-edu" id="overlayEdu" onclick="overlayEduClick(event)">
+  <div class="modal-edu" id="modalEdu">
+    <button class="modal-close" onclick="closeEduModal()">✕</button>
+
+    <div class="edu-content">
+
+      <div class="edu-header">
+        <span class="edu-emoji">🛍️</span>
+        <div class="edu-headline">Your first Rakuten purchase!</div>
+        <div class="edu-sub">Here's how your <strong>$12.80</strong> cashback from Expedia makes its way back to you.</div>
+      </div>
+
+      <div class="edu-steps">
+
+        <!-- Step 1: Done -->
+        <div class="edu-step" style="animation: fadeUp .4s ease .5s both">
+          <div class="step-left">
+            <div class="step-indicator step-done">✓</div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-label">You shopped through Rakuten</div>
+            <div class="step-desc">You clicked through to Expedia via Rakuten — that one step is what activates your Cash Back.</div>
+          </div>
+        </div>
+
+        <!-- Step 2: In progress -->
+        <div class="edu-step" style="animation: fadeUp .4s ease .62s both">
+          <div class="step-left">
+            <div class="step-indicator step-active">⏳</div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-label">Expedia confirms your order</div>
+            <div class="step-desc">Expedia is verifying your purchase and reporting it to Rakuten. This typically takes a few days, but can vary by store.</div>
+          </div>
+        </div>
+
+        <!-- Step 3: Upcoming -->
+        <div class="edu-step" style="animation: fadeUp .4s ease .74s both">
+          <div class="step-left">
+            <div class="step-indicator step-upcoming">💸</div>
+          </div>
+          <div class="step-body">
+            <div class="step-label dim">We send $12.80 to your PayPal</div>
+            <div class="step-desc">Once confirmed, your Cash Back is added to your Rakuten balance and paid out automatically.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- First payment fast-track note -->
+      <div class="edu-card" style="animation: fadeUp .4s ease .82s both; border-left: 3px solid #D97706;">
+        <div class="edu-card-icon">⚡</div>
+        <div class="edu-card-text"><strong>First payment is fast.</strong> Because this is your first purchase, you'll get paid within 15 days of confirmation — not the usual quarterly schedule.</div>
+      </div>
+
+      <!-- Pro tip -->
+      <div class="edu-card" style="animation: fadeUp .4s ease .9s both; border-left: 3px solid #7C3AED;">
+        <div class="edu-card-icon">💡</div>
+        <div class="edu-card-text"><strong>Always start at Rakuten.</strong> If you shop directly on a store's site without going through Rakuten first, we can't track the purchase and you'll miss out on Cash Back.</div>
+      </div>
+
+      <button class="edu-cta" onclick="closeEduModal()">Shop More, Earn More →</button>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── Confetti ── */
+  const COLORS = ['#FCD34D','#F472B6','#60A5FA','#34D399','#FBBF24','#A78BFA','#FB923C','#fff'];
+  let particles = [], rafId;
+  let rowParticles = [], rowRafId;
+
+  function launchRowConfetti() {
+    const canvas = document.getElementById('rowConfettiCanvas');
+    const row    = canvas.parentElement;
+    canvas.width  = row.offsetWidth;
+    canvas.height = row.offsetHeight;
+    const ctx = canvas.getContext('2d');
+
+    const ROW_COLORS = ['#7C3AED','#A78BFA','#C4B5FD','#FCD34D','#FBBF24','#F472B6'];
+    let pool = [];
+
+    for (let i = 0; i < 28; i++) {
+      pool.push({
+        x:    8 + Math.random() * (canvas.width - 16),
+        y:    1 + Math.random() * (canvas.height * 0.4),
+        r:    1.6 + Math.random() * 2.2,
+        color: ROW_COLORS[Math.floor(Math.random() * ROW_COLORS.length)],
+        vx:   (Math.random() - 0.5) * 0.5,
+        vy:   0.45 + Math.random() * 0.65,
+        wob:  Math.random() * Math.PI * 2,
+        wobS: 0.05 + Math.random() * 0.04,
+        rot:  Math.random() * 360,
+        rotV: (Math.random() - 0.5) * 2.5,
+        square: Math.random() > 0.5,
+        age:  0,
+        delay: Math.floor(Math.random() * 30),
+      });
+    }
+
+    cancelAnimationFrame(rowRafId);
+    let frame = 0;
+    (function draw() {
+      frame++;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      let alive = false;
+      pool.forEach(p => {
+        if (frame < p.delay) { alive = true; return; }
+        p.age++;
+        p.wob += p.wobS;
+        p.x   += p.vx + Math.sin(p.wob) * 0.3;
+        p.y   += p.vy;
+        p.rot += p.rotV;
+
+        // Fade in over first 10 frames; fade out as particle nears the bottom
+        const alpha = Math.min(p.age / 10, Math.max(0, (canvas.height - p.y) / (canvas.height * 0.35)));
+        if (alpha <= 0 && p.age > 10) return;
+
+        alive = true;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot * Math.PI / 180);
+        ctx.fillStyle = p.color;
+        if (p.square) {
+          ctx.fillRect(-p.r, -p.r * 0.55, p.r * 2, p.r);
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      });
+
+      if (alive) rowRafId = requestAnimationFrame(draw);
+    })();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const featuredRow = document.querySelector('.row.featured');
+    featuredRow.addEventListener('mouseenter', launchRowConfetti);
+  });
+
+  function launchConfetti() {
+    const canvas = document.getElementById('confettiCanvas');
+    const modal  = document.getElementById('modal');
+    canvas.width  = modal.offsetWidth;
+    canvas.height = modal.offsetHeight;
+    const ctx = canvas.getContext('2d');
+    particles = [];
+
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x:  Math.random() * canvas.width,
+        y: -10 - Math.random() * 40,
+        r:  3 + Math.random() * 4,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        vx: (Math.random() - 0.5) * 1.4,
+        vy:  0.9 + Math.random() * 1.4,
+        rot: Math.random() * 360,
+        rotV: (Math.random() - 0.5) * 3.5,
+        isCircle: Math.random() > 0.5,
+        alpha: 1,
+      });
+    }
+
+    cancelAnimationFrame(rafId);
+    (function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+      particles.forEach(p => {
+        p.x   += p.vx;
+        p.y   += p.vy;
+        p.rot += p.rotV;
+        p.vy  *= 1.003;
+        if (p.y > canvas.height * 0.7) p.alpha -= 0.011;
+        if (p.alpha <= 0) return;
+        alive = true;
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot * Math.PI / 180);
+        ctx.fillStyle = p.color;
+        if (p.isCircle) {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r);
+        }
+        ctx.restore();
+      });
+      if (alive) rafId = requestAnimationFrame(draw);
+    })();
+  }
+
+  /* ── Modal open / close ── */
+  function openModal(amount, method, date) {
+    document.getElementById('modalAmount').textContent = amount;
+    document.getElementById('modalVia').textContent = `sent to your ${method}`;
+
+    const overlay = document.getElementById('overlay');
+    const modal   = document.getElementById('modal');
+
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    // Re-trigger entrance animations
+    modal.style.animation = 'none';
+    requestAnimationFrame(() => { modal.style.animation = ''; });
+
+    setTimeout(launchConfetti, 300);
+  }
+
+  function closeModal() {
+    document.getElementById('overlay').classList.remove('active');
+    document.body.style.overflow = '';
+    cancelAnimationFrame(rafId);
+    const ctx = document.getElementById('confettiCanvas').getContext('2d');
+    ctx.clearRect(0, 0, 9999, 9999);
+  }
+
+  function overlayClick(e) {
+    if (e.target === document.getElementById('overlay')) closeModal();
+  }
+
+  /* ── Old modal (dark purple) ── */
+  let oldParticles = [], oldRafId;
+
+  function openOldModal(amount, method, date) {
+    document.getElementById('oldAmount').textContent = amount;
+    document.getElementById('oldVia').textContent = `Sent to your ${method} · ${date}`;
+    const overlay = document.getElementById('overlayOld');
+    const modal   = document.getElementById('modalOld');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    modal.style.animation = 'none';
+    requestAnimationFrame(() => { modal.style.animation = ''; });
+    setTimeout(launchOldConfetti, 300);
+  }
+
+  function closeOldModal() {
+    document.getElementById('overlayOld').classList.remove('active');
+    document.body.style.overflow = '';
+    cancelAnimationFrame(oldRafId);
+    const ctx = document.getElementById('confettiCanvasOld').getContext('2d');
+    ctx.clearRect(0, 0, 9999, 9999);
+  }
+
+  function overlayOldClick(e) {
+    if (e.target === document.getElementById('overlayOld')) closeOldModal();
+  }
+
+  function launchOldConfetti() {
+    const canvas = document.getElementById('confettiCanvasOld');
+    const modal  = document.getElementById('modalOld');
+    canvas.width  = modal.offsetWidth;
+    canvas.height = modal.offsetHeight;
+    const ctx = canvas.getContext('2d');
+    oldParticles = [];
+    for (let i = 0; i < 60; i++) {
+      oldParticles.push({
+        x: Math.random() * canvas.width, y: -10 - Math.random() * 40,
+        r: 3 + Math.random() * 4,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        vx: (Math.random() - 0.5) * 1.4, vy: 0.9 + Math.random() * 1.4,
+        rot: Math.random() * 360, rotV: (Math.random() - 0.5) * 3.5,
+        isCircle: Math.random() > 0.5, alpha: 1,
+      });
+    }
+    cancelAnimationFrame(oldRafId);
+    (function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+      oldParticles.forEach(p => {
+        p.x += p.vx; p.y += p.vy; p.rot += p.rotV; p.vy *= 1.003;
+        if (p.y > canvas.height * 0.7) p.alpha -= 0.011;
+        if (p.alpha <= 0) return;
+        alive = true;
+        ctx.save(); ctx.globalAlpha = p.alpha;
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot * Math.PI / 180);
+        ctx.fillStyle = p.color;
+        if (p.isCircle) { ctx.beginPath(); ctx.arc(0,0,p.r,0,Math.PI*2); ctx.fill(); }
+        else { ctx.fillRect(-p.r, -p.r/2, p.r*2, p.r); }
+        ctx.restore();
+      });
+      if (alive) oldRafId = requestAnimationFrame(draw);
+    })();
+  }
+
+  /* ── Edu modal (First Order) ── */
+  function openEduModal() {
+    const overlay = document.getElementById('overlayEdu');
+    const modal   = document.getElementById('modalEdu');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    modal.style.animation = 'none';
+    requestAnimationFrame(() => { modal.style.animation = ''; });
+  }
+
+  function closeEduModal() {
+    document.getElementById('overlayEdu').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  function overlayEduClick(e) {
+    if (e.target === document.getElementById('overlayEdu')) closeEduModal();
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeModal(); closeOldModal(); closeEduModal(); }
+  });
+
+  /* ── Easter egg: cash register "cha-ching" ── */
+  function playCashRegister() {
+    const sfx = new Audio('https://www.myinstants.com/media/sounds/ka-ching.mp3');
+    sfx.play();
+  }
+</script>
+</body>
+</html>
