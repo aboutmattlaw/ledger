@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Methods · Rakuten</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f7f7f7; color: #222; }
+
+    /* ── Header ── */
+    .header {
+      background: #c00;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header svg { width: 28px; height: 28px; }
+    .header h1 { color: #fff; font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+
+    /* ── Layout ── */
+    .container { max-width: 640px; margin: 0 auto; padding: 32px 16px 60px; }
+    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .page-subtitle { color: #888; font-size: 14px; margin-bottom: 28px; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.9px;
+      text-transform: uppercase;
+      color: #999;
+      margin-bottom: 10px;
+      padding-left: 2px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      margin-bottom: 28px;
+    }
+
+    /* ── Payment row ── */
+    .method-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 20px;
+      border-bottom: 1px solid #f3f3f3;
+      transition: background 0.14s;
+    }
+    .method-row:last-child { border-bottom: none; }
+
+    .method-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .method-icon.check-icon { background: #f3f0ff; }
+    .method-icon.paypal-icon { background: #e8f0fb; }
+    .method-icon.amex-icon { background: #e8f4fd; }
+
+    .method-body { flex: 1; }
+    .method-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #222;
+      margin-bottom: 2px;
+    }
+    .method-desc {
+      font-size: 13px;
+      color: #aaa;
+    }
+    .method-edit {
+      font-size: 13px;
+      font-weight: 600;
+      color: #6D28D9;
+      cursor: pointer;
+      margin-top: 3px;
+      display: inline-block;
+    }
+    .method-edit:hover { text-decoration: underline; }
+
+    .method-action { flex-shrink: 0; text-align: right; }
+
+    .badge-selected {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #ECFDF5;
+      color: #059669;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 99px;
+    }
+    .badge-selected svg { width: 12px; height: 12px; }
+
+    /* ── Dimmed / legacy row ── */
+    .method-row.dimmed { background: #fafafa; }
+    .method-row.dimmed .method-name { color: #bbb; font-weight: 500; }
+    .method-row.dimmed .method-desc { color: #ddd; }
+    .method-row.dimmed .method-icon { opacity: 0.4; }
+    .method-row.dimmed .btn-select {
+      border-color: #e0e0e0;
+      color: #ccc;
+    }
+    .method-row.dimmed .btn-select:hover {
+      border-color: #6D28D9;
+      color: #6D28D9;
+      background: none;
+    }
+
+    .btn-select {
+      background: none;
+      border: 1.5px solid #6D28D9;
+      color: #6D28D9;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: background 0.14s, color 0.14s;
+    }
+    .btn-select:hover { background: #6D28D9; color: #fff; }
+
+    .method-row-text {
+      padding: 12px 20px;
+      font-size: 12px;
+      color: #bbb;
+      border-top: 1px solid #f3f3f3;
+    }
+    .method-text-link {
+      color: #6D28D9;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .method-text-link:hover { text-decoration: underline; }
+
+    /* ── Gift cards ── */
+    .gift-card-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+      border-bottom: 1px solid #fde68a;
+      gap: 12px;
+    }
+    .gift-card-banner-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #92400E;
+      margin-bottom: 3px;
+    }
+    .gift-card-banner-sub {
+      font-size: 12px;
+      color: #B45309;
+      line-height: 1.5;
+    }
+    .gift-card-banner-bolt {
+      font-size: 32px;
+      flex-shrink: 0;
+    }
+    .gift-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+      border-bottom: 1px solid #f3f3f3;
+    }
+    .badge-instant {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #FEF3C7;
+      color: #D97706;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 99px;
+      letter-spacing: 0.3px;
+    }
+    .badge-instant::before {
+      content: '⚡';
+      font-size: 10px;
+    }
+
+    .gift-tiles {
+      display: flex;
+      gap: 10px;
+      padding: 16px 20px;
+      border-bottom: 1px solid #f3f3f3;
+    }
+    .gift-tile {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      padding: 14px 8px 12px;
+      background: #fafafa;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.14s;
+    }
+    .gift-tile:hover { background: #f3f0ff; }
+    .gift-tile-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      font-weight: 900;
+    }
+    .gift-tile-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+    }
+    .gift-tile-desc {
+      font-size: 10px;
+      color: #aaa;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .gift-tile .badge-instant {
+      font-size: 10px;
+      padding: 3px 7px;
+    }
+    .gift-browse {
+      padding: 11px 20px;
+      font-size: 12px;
+      color: #bbb;
+    }
+
+    /* ── Connected accounts ── */
+    .account-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 20px;
+      border-bottom: 1px solid #f3f3f3;
+    }
+    .account-row:last-child { border-bottom: none; }
+
+    .account-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .account-icon.google { background: #fff; border: 1.5px solid #e8e8e8; }
+    .account-icon.apple  { background: #000; color: #fff; font-size: 18px; }
+    .account-icon.fb     { background: #1877F2; color: #fff; font-size: 16px; }
+
+    .account-body { flex: 1; }
+    .account-name { font-size: 14px; font-weight: 600; }
+    .account-sub  { font-size: 12px; color: #aaa; margin-top: 1px; }
+
+    .account-action { flex-shrink: 0; }
+    .btn-connected {
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 0;
+    }
+    .btn-connected:hover { color: #c00; }
+    .btn-connect {
+      background: none;
+      border: 1.5px solid #ddd;
+      color: #888;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: border-color 0.14s, color 0.14s;
+    }
+    .btn-connect:hover { border-color: #6D28D9; color: #6D28D9; }
+
+    /* ── Check nudge modal ── */
+    .overlay-check {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 200;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
+    .overlay-check.active { display: flex; }
+    .modal-check {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border-radius: 20px;
+      overflow: hidden;
+      animation: sheetUp .3s cubic-bezier(.4,0,.2,1) both;
+    }
+    @keyframes sheetUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .check-modal-header {
+      background: #fafafa;
+      padding: 20px 20px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      text-align: center;
+    }
+    .check-modal-header .emoji { font-size: 28px; margin-bottom: 6px; }
+    .check-modal-header h3 { font-size: 16px; font-weight: 700; color: #222; margin-bottom: 4px; }
+    .check-modal-header p  { font-size: 13px; color: #999; line-height: 1.4; }
+    .check-nudge-list { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+    .check-nudge-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.14s;
+    }
+    .check-nudge-item:hover { background: #f7f5ff; }
+    .check-nudge-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 900; flex-shrink: 0;
+    }
+    .check-nudge-body { flex: 1; }
+    .check-nudge-name { font-size: 14px; font-weight: 600; color: #222; margin-bottom: 2px; }
+    .check-nudge-reason { font-size: 12px; color: #888; line-height: 1.4; }
+    .check-modal-footer {
+      padding: 12px 20px 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid #f3f3f3;
+    }
+    .btn-check-confirm {
+      width: 100%;
+      padding: 11px;
+      border: 1.5px solid #ddd;
+      background: none;
+      border-radius: 99px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #bbb;
+      cursor: pointer;
+      transition: border-color 0.14s, color 0.14s;
+    }
+    .btn-check-confirm:hover { border-color: #aaa; color: #888; }
+
+    /* ── Boost badge ── */
+    .badge-boost {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: #F0FDF4;
+      color: #16A34A;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 99px;
+      letter-spacing: 0.2px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 28px 0 20px;
+      font-size: 12px;
+      color: #a09ab8;
+      letter-spacing: 0.03em;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <svg viewBox="0 0 32 32" fill="none">
+    <circle cx="16" cy="16" r="16" fill="#fff" fill-opacity=".15"/>
+    <text x="7" y="22" font-size="16" font-weight="900" fill="#fff" font-family="Georgia,serif">R</text>
+  </svg>
+  <h1>Rakuten</h1>
+</header>
+
+<div class="container">
+  <h2 class="page-title">Account Settings</h2>
+  <p class="page-subtitle">Manage how you receive and access your Cash Back</p>
+
+  <!-- Gift cards -->
+  <div class="section-label">Gift Cards · Instant Payout</div>
+  <div class="card gift-card-card">
+
+    <div class="gift-card-banner">
+      <div class="gift-card-banner-text">
+        <div class="gift-card-banner-title">Get paid instantly</div>
+        <div class="gift-card-banner-sub">Redeem your Cash Back as a gift card and receive it in minutes — no waiting for a check or transfer.</div>
+        <div style="margin-top:10px; display:inline-flex; align-items:center; gap:8px; background:#fff; border-radius:8px; padding:7px 12px;">
+          <span style="font-size:12px; color:#B45309; font-weight:600;">Available to redeem</span>
+          <span style="font-size:16px; font-weight:800; color:#92400E;">$1.77</span>
+        </div>
+      </div>
+      <div class="gift-card-banner-bolt">⚡</div>
+    </div>
+
+    <div class="gift-tiles">
+      <div class="gift-tile">
+        <div class="gift-tile-icon" style="background:#fff8f0; color:#EA580C;">A</div>
+        <div class="gift-tile-name">Amazon</div>
+        <div class="gift-tile-desc">Gift Card</div>
+        <span class="badge-instant">Instant</span>
+        <span class="badge-boost">+5%</span>
+      </div>
+      <div class="gift-tile">
+        <div class="gift-tile-icon" style="background:#f0f7ff; color:#2563EB;">W</div>
+        <div class="gift-tile-name">Walmart</div>
+        <div class="gift-tile-desc">eGift Card</div>
+        <span class="badge-instant">Instant</span>
+        <span class="badge-boost">+3%</span>
+      </div>
+      <div class="gift-tile">
+        <div class="gift-tile-icon" style="background:#fff0f0; color:#c00;">T</div>
+        <div class="gift-tile-name">Target</div>
+        <div class="gift-tile-desc">GiftCard</div>
+        <span class="badge-instant">Instant</span>
+        <span class="badge-boost">+4%</span>
+      </div>
+    </div>
+    <div class="gift-browse">
+      + 200 more retailers &nbsp;·&nbsp; <span class="method-text-link">Browse all</span>
+    </div>
+
+  </div>
+
+  <!-- Payment methods -->
+  <div class="section-label">How you're getting paid</div>
+  <div class="card">
+
+    <!-- Venmo (selected) -->
+    <div class="method-row">
+      <div class="method-icon" style="background:#e8f5fb;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <rect width="24" height="24" rx="5" fill="#008CFF" opacity="0"/>
+          <text x="3" y="18" font-size="16" font-weight="900" fill="#008CFF" font-family="-apple-system,sans-serif">V</text>
+        </svg>
+      </div>
+      <div class="method-body">
+        <div class="method-name">Venmo</div>
+        <div class="method-desc">Instant transfer to your Venmo balance.</div>
+        <span class="method-edit">Edit</span>
+      </div>
+      <div class="method-action">
+        <span class="badge-selected">
+          <svg viewBox="0 0 12 12" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1.5,6 5,9.5 10.5,2.5"/>
+          </svg>
+          Selected
+        </span>
+      </div>
+    </div>
+
+    <!-- PayPal -->
+    <div class="method-row">
+      <div class="method-icon paypal-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <text x="4" y="18" font-size="18" font-weight="900" fill="#003087" font-family="-apple-system,sans-serif">P</text>
+        </svg>
+      </div>
+      <div class="method-body">
+        <div class="method-name">PayPal</div>
+        <div class="method-desc">Transfer Cash Back to your PayPal.</div>
+      </div>
+      <div class="method-action">
+        <button class="btn-select" onclick="selectMethod(this, 'PayPal')">Select</button>
+      </div>
+    </div>
+
+    <!-- Membership Rewards -->
+    <div class="method-row">
+      <div class="method-icon amex-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <rect x="1" y="5" width="22" height="14" rx="3" fill="#016FD0"/>
+          <text x="4" y="16" font-size="8" font-weight="800" fill="#fff" font-family="-apple-system,sans-serif">AMEX</text>
+        </svg>
+      </div>
+      <div class="method-body">
+        <div class="method-name">Membership Rewards<sup style="font-size:10px;">®</sup> points</div>
+        <div class="method-desc">Earn points instead of Cash Back.</div>
+      </div>
+      <div class="method-action">
+        <button class="btn-select" onclick="selectMethod(this, 'Membership Rewards')">Select</button>
+      </div>
+    </div>
+
+    <!-- Big Fat Check (secondary text option) -->
+    <div class="method-row-text">
+      Prefer a check? <span class="method-text-link" onclick="openCheckModal()">Switch to Big Fat Check</span>
+    </div>
+
+  </div>
+
+
+</div>
+
+<!-- Check nudge modal -->
+<div class="overlay-check" id="overlayCheck" onclick="overlayCheckClick(event)">
+  <div class="modal-check" id="modalCheck">
+    <div class="check-modal-header">
+      <div class="emoji">📬</div>
+      <h3>Checks take up to 90 days</h3>
+      <p>Your Cash Back is ready now. Here's how to get it faster.</p>
+    </div>
+    <div class="check-nudge-list">
+      <div class="check-nudge-item" onclick="switchAndClose('Venmo')">
+        <div class="check-nudge-icon" style="background:#e8f5fb; color:#008CFF;">V</div>
+        <div class="check-nudge-body">
+          <div class="check-nudge-name">Venmo <span style="color:#059669; font-size:11px; font-weight:600;">⚡ Instant</span></div>
+          <div class="check-nudge-reason">Land in your Venmo balance the same day your Cash Back is confirmed.</div>
+        </div>
+      </div>
+      <div class="check-nudge-item" onclick="switchAndClose('PayPal')">
+        <div class="check-nudge-icon" style="background:#e8f0fb; color:#003087;">P</div>
+        <div class="check-nudge-body">
+          <div class="check-nudge-name">PayPal <span style="color:#059669; font-size:11px; font-weight:600;">⚡ Instant</span></div>
+          <div class="check-nudge-reason">Direct to your PayPal balance — spend it anywhere PayPal is accepted.</div>
+        </div>
+      </div>
+      <div class="check-nudge-item" onclick="closeCheckModal()">
+        <div class="check-nudge-icon" style="background:#fff8f0; color:#EA580C;">🎁</div>
+        <div class="check-nudge-body">
+          <div class="check-nudge-name">Gift Cards <span style="color:#059669; font-size:11px; font-weight:600;">⚡ Instant + up to 5% boost</span></div>
+          <div class="check-nudge-reason">Redeem as Amazon, Walmart, or Target gift cards — often at a bonus rate.</div>
+        </div>
+      </div>
+    </div>
+    <div class="check-modal-footer">
+      <button class="btn-check-confirm" onclick="confirmCheck()">No thanks, mail me a check</button>
+    </div>
+  </div>
+</div>
+
+<footer>made with ♥ in nyc</footer>
+
+<script>
+  function selectMethod(btn, name) {
+    // Reset all rows to unselected
+    document.querySelectorAll('.method-row').forEach(row => {
+      const action = row.querySelector('.method-action');
+      const body   = row.querySelector('.method-body');
+      // Remove any existing selected badge
+      const badge = action.querySelector('.badge-selected');
+      if (badge) {
+        action.innerHTML = '<button class="btn-select" onclick="selectMethod(this, \'' + row.dataset.method + '\')">Select</button>';
+      }
+      // Remove edit link if present
+      const edit = body.querySelector('.method-edit');
+      if (edit) edit.remove();
+    });
+
+    // Mark clicked row as selected
+    const row = btn.closest('.method-row');
+    const body = row.querySelector('.method-body');
+    btn.closest('.method-action').innerHTML = `
+      <span class="badge-selected">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="1.5,6 5,9.5 10.5,2.5"/>
+        </svg>
+        Selected
+      </span>`;
+    if (!body.querySelector('.method-edit')) {
+      const edit = document.createElement('span');
+      edit.className = 'method-edit';
+      edit.textContent = 'Edit';
+      body.appendChild(edit);
+    }
+  }
+
+  function openCheckModal() {
+    document.getElementById('overlayCheck').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeCheckModal() {
+    document.getElementById('overlayCheck').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  function overlayCheckClick(e) {
+    if (e.target === document.getElementById('overlayCheck')) closeCheckModal();
+  }
+  function confirmCheck() {
+    closeCheckModal();
+    // user insists on check — just close quietly
+  }
+  function switchAndClose(name) {
+    closeCheckModal();
+    const rows = document.querySelectorAll('.method-row');
+    rows.forEach(row => {
+      const n = row.querySelector('.method-name');
+      if (n && n.textContent.trim() === name) {
+        const btn = row.querySelector('.btn-select');
+        if (btn) selectMethod(btn, name);
+      }
+    });
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCheckModal(); });
+
+  // Store method names on rows for reset
+  document.querySelectorAll('.method-row').forEach(row => {
+    const name = row.querySelector('.method-name');
+    if (name) row.dataset.method = name.textContent.trim();
+  });
+</script>
+</body>
+</html>
