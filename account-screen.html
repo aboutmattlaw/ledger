@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Account — Cash Back Activity</title>
+  <style>
+    :root{--bg:#f7f7fb;--card:#ffffff;--muted:#6b7280;--purple:#7c3aed;--accent:#7c3aed;--green:#10b981}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;color:#111827;background:var(--bg)}
+    .layout{max-width:1200px;margin:28px auto;padding:0 20px;display:flex;gap:24px}
+
+    /* Sidebar */
+    .sidebar{width:260px}
+    .brand{font-weight:700;color:var(--purple);font-size:20px;margin-bottom:18px}
+    .userbox{background:#fff;padding:16px;border-radius:10px;box-shadow:0 6px 18px rgba(15,23,42,0.04);margin-bottom:16px}
+    .userbox p{margin:0}
+    .nav{background:transparent;padding:8px 0}
+    .nav a{display:block;padding:10px 12px;border-radius:8px;color:#374151;text-decoration:none;margin-bottom:6px}
+    .nav a.active{background:#fff;color:var(--purple);box-shadow:0 4px 12px rgba(124,58,237,0.06)}
+
+    /* Main content */
+    .main{flex:1}
+    .page-title{font-size:20px;margin:0 0 12px}
+    .controls{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+    .card{background:#fff;padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(15,23,42,0.04)}
+
+    .summary{display:flex;gap:16px}
+    .summary .box{flex:1;padding:16px;border-radius:8px;border:1px solid rgba(15,23,42,0.04)}
+    .summary .amount{font-size:28px;font-weight:700;margin:6px 0}
+    .summary .label{color:var(--muted);font-size:13px}
+
+    .tabs{display:flex;gap:8px;margin-top:12px}
+    .tab{padding:8px 12px;border-radius:20px;background:#fff;border:1px solid rgba(15,23,42,0.04);cursor:pointer}
+    .tab.active{background:var(--purple);color:#fff}
+
+    .list{margin-top:18px}
+    .row{display:grid;grid-template-columns:120px 1fr 120px 100px;gap:12px;align-items:center;padding:12px;border-bottom:1px solid #f1f1f6}
+    .row .desc{font-size:14px;color:#111827}
+    .row .date{color:var(--muted);font-size:13px}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;font-size:13px}
+    .pill.pending{background:#eef2ff;color:#1e3a8a}
+    .pill.confirmed{background:#ecfdf5;color:var(--green)}
+    .pill.trip{background:#f3f4f6;color:#374151}
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">CashBack Co.</div>
+      <div class="userbox">
+        <p><strong>Matthew</strong></p>
+        <p style="color:var(--muted);font-size:13px">member since 2022</p>
+      </div>
+      <nav class="nav">
+        <a href="#" class="active">Account</a>
+        <a href="#">Cash Back</a>
+        <a href="#">Trips</a>
+        <a href="#">Settings</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <h1 class="page-title">Account Activity</h1>
+      <div class="card">
+        <div class="summary">
+          <div class="box">
+            <div class="label">Confirmed</div>
+            <div id="confirmedTotal" class="amount">$0.00</div>
+          </div>
+          <div class="box">
+            <div class="label">Pending</div>
+            <div id="pendingTotal" class="amount">$0.00</div>
+          </div>
+        </div>
+
+        <div class="tabs" style="margin-top:16px">
+          <div class="tab active" data-filter="all">All</div>
+          <div class="tab" data-filter="trip">Trips</div>
+          <div class="tab" data-filter="pending">Pending</div>
+          <div class="tab" data-filter="confirmed">Confirmed</div>
+        </div>
+
+        <div id="activityList" class="list">
+          <!-- Mixed rows: Trip/Pending/Confirmed interleaved while preserving counts (20 Trip, 4 Pending, 2 Confirmed = 26 total) -->
+          <div class="row"><div class="date">12/01/2025</div><div class="desc">Old Navy</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+          <div class="row"><div class="date">12/02/2025</div><div class="desc">Barnes &amp; Noble</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+          <div class="row"><div class="date">12/03/2025</div><div class="desc">Target</div><div><span class="pill pending">Pending</span></div><div class="amount-cell">$0.90</div></div>
+          <div class="row"><div class="date">12/04/2025</div><div class="desc">Macy's</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+
+          <div class="row"><div class="date">12/05/2025</div><div class="desc">Best Buy</div><div><span class="pill confirmed">Confirmed</span></div><div class="amount-cell">$2.30</div></div>
+          <div class="row"><div class="date">12/06/2025</div><div class="desc">EXPRESS</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+          <div class="row"><div class="date">12/07/2025</div><div class="desc">IKEA</div><div><span class="pill pending">Pending</span></div><div class="amount-cell">$1.00</div></div>
+          <div class="row"><div class="date">12/08/2025</div><div class="desc">CVS</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+
+          <div class="row"><div class="date">12/09/2025</div><div class="desc">Petco</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+          <div class="row"><div class="date">12/10/2025</div><div class="desc">Nike</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+          <div class="row"><div class="date">12/11/2025</div><div class="desc">EXPEDIA</div><div><span class="pill pending">Pending</span></div><div class="amount-cell">$0.60</div></div>
+          <div class="row"><div class="date">12/12/2025</div><div class="desc">StubHub</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+
+          <div class="row"><div class="date">12/13/2025</div><div class="desc">Ticketmaster</div><div><span class="pill confirmed">Confirmed</span></div><div class="amount-cell">$3.50</div></div>
+          <div class="row"><div class="date">12/14/2025</div><div class="desc">Redbubble</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+          <div class="row"><div class="date">12/15/2025</div><div class="desc">Shein</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+          <div class="row"><div class="date">12/16/2025</div><div class="desc">J.Crew</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+
+          <div class="row"><div class="date">12/17/2025</div><div class="desc">Gap</div><div><span class="pill pending">Pending</span></div><div class="amount-cell">$0.55</div></div>
+          <div class="row"><div class="date">12/18/2025</div><div class="desc">Brooklinen</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+          <div class="row"><div class="date">12/19/2025</div><div class="desc">Macy's</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+          <div class="row"><div class="date">12/20/2025</div><div class="desc">Best Buy</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+
+          <div class="row"><div class="date">12/21/2025</div><div class="desc">Apple Store</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+          <div class="row"><div class="date">12/22/2025</div><div class="desc">Sephora</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+
+          <div class="row"><div class="date">12/23/2025</div><div class="desc">Williams-Sonoma</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+          <div class="row"><div class="date">12/24/2025</div><div class="desc">Urban Outfitters</div><div><span class="pill pending">Pending</span></div><div class="amount-cell">$1.10</div></div>
+
+          <div class="row"><div class="date">12/25/2025</div><div class="desc">Lululemon</div><div><span class="pill trip">Trip</span></div><div class="amount-cell">--</div></div>
+          <div class="row"><div class="date">12/26/2025</div><div class="desc">Apple Store (confirmed)</div><div><span class="pill confirmed">Confirmed</span></div><div class="amount-cell">$3.00</div></div>
+        </div>
+
+        <div class="pagination" style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px">
+          <div>
+            <button id="prevPage" style="padding:6px 10px;border-radius:6px;border:1px solid #e6e6f0;background:#fff;cursor:pointer">◀</button>
+            <button id="nextPage" style="padding:6px 10px;border-radius:6px;border:1px solid #e6e6f0;background:#fff;cursor:pointer">▶</button>
+          </div>
+          <div id="pageInfo" style="color:var(--muted);font-size:13px">1 - 10 of 26</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label for="perPage" style="color:var(--muted);font-size:13px">Per page:</label>
+            <select id="perPage" style="padding:6px;border-radius:6px;border:1px solid #e6e6f0">
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="notes" style="margin-top:14px">
+          <strong>CASH BACK FAQS</strong>
+          <p style="margin-top:8px">How do I earn Cash Back? Start by activating and choose a store. Activate Cash Back to start shopping. Once you make an eligible purchase, we'll add Cash Back to your account. <a href="#">Learn more</a></p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Pagination + Filters for the combined activity list
+    const filterButtons = document.querySelectorAll('.tabs .tab');
+    const activityRowsSelector = '#activityList .row';
+    const perPageSelect = document.getElementById('perPage');
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    const pageInfo = document.getElementById('pageInfo');
+
+    let currentFilter = 'all';
+    let currentPage = 1;
+    let itemsPerPage = parseInt(perPageSelect.value, 10) || 10;
+
+    function getStatus(row){
+      const pill = row.querySelector('.pill');
+      if(!pill) return 'other';
+      if(pill.classList.contains('confirmed')) return 'confirmed';
+      if(pill.classList.contains('pending')) return 'pending';
+      if(pill.classList.contains('trip')) return 'trip';
+      return 'other';
+    }
+
+    function getFilteredRows(){
+      const rows = Array.from(document.querySelectorAll(activityRowsSelector));
+      if(currentFilter === 'all') return rows;
+      return rows.filter(r => getStatus(r) === currentFilter);
+    }
+
+    function renderPage(page){
+      const rows = getFilteredRows();
+      const total = rows.length;
+      const totalPages = Math.max(1, Math.ceil(total / itemsPerPage));
+      currentPage = Math.min(Math.max(1, page), totalPages);
+      const start = (currentPage - 1) * itemsPerPage;
+      const end = Math.min(start + itemsPerPage, total);
+
+      // hide all rows first
+      Array.from(document.querySelectorAll(activityRowsSelector)).forEach(r => r.style.display = 'none');
+      // show only current page rows
+      rows.slice(start, end).forEach(r => r.style.display = '');
+
+      // update page info
+      pageInfo.textContent = total === 0 ? '0 of 0' : `${start + 1} - ${end} of ${total}`;
+      prevBtn.disabled = currentPage <= 1;
+      nextBtn.disabled = currentPage >= totalPages;
+    }
+
+    function formatCurrency(n){
+      return '$' + n.toFixed(2);
+    }
+
+    function computeTotals(){
+      let confirmed = 0;
+      let pending = 0;
+      const rows = getFilteredRows(); // totals reflect the filtered set (not just visible page)
+      rows.forEach(row => {
+        const pill = row.querySelector('.pill');
+        const amountCell = row.querySelector('.amount-cell');
+        if(!pill || !amountCell) return;
+        const text = amountCell.textContent.trim();
+        const firstLine = text.split('\n')[0].trim();
+        if(firstLine === '--' || firstLine === '') return;
+        const num = parseFloat(firstLine.replace(/[^0-9.-]+/g, ''));
+        if(isNaN(num)) return;
+        if(pill.classList.contains('confirmed')) confirmed += num;
+        else if(pill.classList.contains('pending')) pending += num;
+      });
+      const confEl = document.getElementById('confirmedTotal');
+      const penEl = document.getElementById('pendingTotal');
+      if(confEl) confEl.textContent = formatCurrency(confirmed);
+      if(penEl) penEl.textContent = formatCurrency(pending);
+    }
+
+    // Wire up filter buttons
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        filterButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter || 'all';
+        currentPage = 1;
+        renderPage(currentPage);
+        computeTotals();
+      });
+    });
+
+    // Pagination controls
+    prevBtn.addEventListener('click', ()=>{ renderPage(currentPage - 1); });
+    nextBtn.addEventListener('click', ()=>{ renderPage(currentPage + 1); });
+    perPageSelect.addEventListener('change', ()=>{
+      itemsPerPage = parseInt(perPageSelect.value, 10) || 10;
+      currentPage = 1;
+      renderPage(currentPage);
+    });
+
+    // initialize
+    renderPage(1);
+    computeTotals();
+  </script>
+</body>
+</html>
