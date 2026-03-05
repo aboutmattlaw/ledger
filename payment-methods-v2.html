@@ -361,6 +361,7 @@
       white-space: nowrap;
     }
     .method-select-btn:hover { background: #6D28D9; color: #fff; }
+    .method-option.selected .method-select-btn { display: none; }
     .badge-method-selected {
       flex-shrink: 0; align-self: center;
       display: none;
@@ -558,6 +559,7 @@
               <span class="badge badge-new">New</span>
             </div>
           </div>
+          <span class="badge-method-selected">✓ Selected</span>
           <button class="method-select-btn" onclick="openVenmoModal()">Select</button>
         </div>
 
@@ -572,6 +574,7 @@
             <div class="method-name">PayPal</div>
             <div class="method-desc">Cash Back is paid to your PayPal balance once every 3 months.</div>
           </div>
+          <span class="badge-method-selected">✓ Selected</span>
           <button class="method-select-btn" onclick="openPaypalModal()">Select</button>
         </div>
 
@@ -587,6 +590,7 @@
             <div class="method-name">Membership Rewards<sup style="font-size:10px;">®</sup></div>
             <div class="method-desc">Amex points are credited to your Membership Rewards account once every 3 months.</div>
           </div>
+          <span class="badge-method-selected">✓ Selected</span>
           <button class="method-select-btn" onclick="openAmexModal()">Select</button>
         </div>
 
@@ -708,7 +712,7 @@
       <p>Connect your Venmo to receive Cash Back directly to your balance. You'll be paid automatically once every 3 months, after each payment period closes.</p>
     </div>
     <div class="modal-foot">
-      <button class="btn-connect" onclick="closeVenmoModal()">Connect Venmo</button>
+      <button class="btn-connect" onclick="selectMethod('venmo'); closeVenmoModal()">Connect Venmo</button>
       <button class="btn-check-anyway" onclick="closeVenmoModal()">Not right now</button>
     </div>
   </div>
@@ -723,7 +727,7 @@
       <p>Connect your PayPal to receive Cash Back directly to your balance. You'll be paid automatically once every 3 months, after each payment period closes.</p>
     </div>
     <div class="modal-foot">
-      <button class="btn-connect" onclick="closePaypalModal()">Connect PayPal</button>
+      <button class="btn-connect" onclick="selectMethod('paypal'); closePaypalModal()">Connect PayPal</button>
       <button class="btn-check-anyway" onclick="closePaypalModal()">Not right now</button>
     </div>
   </div>
@@ -743,7 +747,7 @@
       <p>Any confirmed Cash Back earned before switching to points will be converted at the rate of 1% = 1X points, and transferred to your Membership Rewards® account on the next transfer date.</p>
     </div>
     <div class="modal-foot">
-      <button class="btn-connect" onclick="closeAmexModal()">Connect Membership Rewards®</button>
+      <button class="btn-connect" onclick="selectMethod('amex'); closeAmexModal()">Connect Membership Rewards®</button>
       <button class="btn-check-anyway" onclick="closeAmexModal()">No thanks, keep Cash Back</button>
     </div>
   </div>
