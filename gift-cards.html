@@ -350,6 +350,43 @@
     }
     .btn-check-anyway:hover { border-color: #aaa; color: #888; }
 
+    /* ── Method row Select/Selected controls ── */
+    .method-select-btn {
+      flex-shrink: 0; align-self: center;
+      font-size: 13px; font-weight: 600;
+      color: #6D28D9; background: none;
+      border: 1.5px solid #6D28D9;
+      border-radius: 99px; padding: 5px 14px;
+      cursor: pointer; transition: background .12s, color .12s;
+      white-space: nowrap;
+    }
+    .method-select-btn:hover { background: #6D28D9; color: #fff; }
+    .badge-method-selected {
+      flex-shrink: 0; align-self: center;
+      display: none;
+      align-items: center; gap: 5px;
+      font-size: 12px; font-weight: 700;
+      background: #EDE9FE; color: #6D28D9;
+      padding: 5px 12px; border-radius: 99px;
+    }
+    .method-option.selected .badge-method-selected { display: inline-flex; }
+
+    /* ── Linking modal primary CTA ── */
+    .btn-connect {
+      width: 100%; padding: 13px;
+      background: #6D28D9; color: #fff;
+      font-size: 14px; font-weight: 700;
+      border: none; border-radius: 99px;
+      cursor: pointer; margin-bottom: 8px;
+      transition: background .14s;
+    }
+    .btn-connect:hover { background: #5B21B6; }
+    .modal-body {
+      padding: 18px 22px; font-size: 13px; color: #666;
+      line-height: 1.55; display: flex; flex-direction: column; gap: 10px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
     /* ── Check mode toggle ── */
     .check-selected-row { display: none; }
     body.check-mode .check-selected-row { display: flex; }
@@ -467,7 +504,6 @@
 
         <!-- Gift Cards (selected by default) -->
         <div class="method-option selected" id="opt-gift" onclick="selectMethod('gift')">
-          <div class="radio-wrap"><div class="radio"><div class="radio-dot"></div></div></div>
           <div class="method-icon" style="background:#fff7ed;">🎁</div>
           <div class="method-body">
             <div class="method-name">Gift Cards</div>
@@ -478,6 +514,7 @@
             </div>
             <span class="redeem-trigger" id="redeemTrigger" onclick="event.stopPropagation(); toggleRedeemPanel()">Redeem up to $23.53 →</span>
           </div>
+          <span class="badge-method-selected">✓ Selected</span>
         </div>
 
         <!-- Redemption panel -->
@@ -508,8 +545,7 @@
         <div class="method-group-label method-group-label-scheduled">🗓 Scheduled · Every 3 months</div>
 
         <!-- Venmo -->
-        <div class="method-option" id="opt-venmo" onclick="selectMethod('venmo')">
-          <div class="radio-wrap"><div class="radio"><div class="radio-dot"></div></div></div>
+        <div class="method-option" id="opt-venmo">
           <div class="method-icon" style="background:#e8f5fb;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <text x="3" y="18" font-size="18" font-weight="900" fill="#008CFF" font-family="-apple-system,sans-serif">V</text>
@@ -522,11 +558,11 @@
               <span class="badge badge-new">New</span>
             </div>
           </div>
+          <button class="method-select-btn" onclick="openVenmoModal()">Select</button>
         </div>
 
         <!-- PayPal -->
-        <div class="method-option" id="opt-paypal" onclick="selectMethod('paypal')">
-          <div class="radio-wrap"><div class="radio"><div class="radio-dot"></div></div></div>
+        <div class="method-option" id="opt-paypal">
           <div class="method-icon" style="background:#e8f0fb;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <text x="4" y="18" font-size="20" font-weight="900" fill="#003087" font-family="-apple-system,sans-serif">P</text>
@@ -536,11 +572,11 @@
             <div class="method-name">PayPal</div>
             <div class="method-desc">Cash Back is paid to your PayPal balance once every 3 months.</div>
           </div>
+          <button class="method-select-btn" onclick="openPaypalModal()">Select</button>
         </div>
 
         <!-- Membership Rewards -->
-        <div class="method-option" id="opt-amex" onclick="selectMethod('amex')">
-          <div class="radio-wrap"><div class="radio"><div class="radio-dot"></div></div></div>
+        <div class="method-option" id="opt-amex">
           <div class="method-icon" style="background:#e8f4fd;">
             <svg width="28" height="22" viewBox="0 0 28 22" fill="none">
               <rect x="0" y="0" width="28" height="22" rx="4" fill="#016FD0"/>
@@ -551,6 +587,7 @@
             <div class="method-name">Membership Rewards<sup style="font-size:10px;">®</sup></div>
             <div class="method-desc">Amex points are credited to your Membership Rewards account once every 3 months.</div>
           </div>
+          <button class="method-select-btn" onclick="openAmexModal()">Select</button>
         </div>
 
         <!-- Big Fat Check (de-emphasized text link) — hidden in check-mode -->
@@ -560,7 +597,6 @@
 
         <!-- Big Fat Check as selected method — only shown in check-mode -->
         <div class="method-option check-selected-row" id="opt-check">
-          <div class="radio-wrap"><div class="radio check-radio"><div class="radio-dot" style="opacity:1;"></div></div></div>
           <div class="method-icon" style="background:#f5f5f5;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <rect x="2" y="6" width="20" height="13" rx="2" stroke="#888" stroke-width="1.8" fill="none"/>
@@ -663,6 +699,56 @@
   </div>
 </div>
 
+<!-- Venmo linking modal -->
+<div class="overlay" id="venmoOverlay" onclick="overlayClickVenmo(event)">
+  <div class="modal-box" id="venmoModal">
+    <div class="modal-head">
+      <div class="modal-emoji" style="background:#e8f5fb; display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px; border-radius:12px; font-size:24px; font-weight:900; color:#008CFF; margin-bottom:10px;">V</div>
+      <h3>Link your Venmo account</h3>
+      <p>Connect your Venmo to receive Cash Back directly to your balance. You'll be paid automatically once every 3 months, after each payment period closes.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-connect" onclick="closeVenmoModal()">Connect Venmo</button>
+      <button class="btn-check-anyway" onclick="closeVenmoModal()">Not right now</button>
+    </div>
+  </div>
+</div>
+
+<!-- PayPal linking modal -->
+<div class="overlay" id="paypalOverlay" onclick="overlayClickPaypal(event)">
+  <div class="modal-box" id="paypalModal">
+    <div class="modal-head">
+      <div class="modal-emoji" style="background:#e8f0fb; display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px; border-radius:12px; font-size:24px; font-weight:900; color:#003087; margin-bottom:10px;">P</div>
+      <h3>Link your PayPal account</h3>
+      <p>Connect your PayPal to receive Cash Back directly to your balance. You'll be paid automatically once every 3 months, after each payment period closes.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-connect" onclick="closePaypalModal()">Connect PayPal</button>
+      <button class="btn-check-anyway" onclick="closePaypalModal()">Not right now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Amex Membership Rewards linking modal -->
+<div class="overlay" id="amexOverlay" onclick="overlayClickAmex(event)">
+  <div class="modal-box" id="amexModal">
+    <div class="modal-head">
+      <div class="modal-emoji" style="margin-bottom:10px;">
+        <svg width="48" height="38" viewBox="0 0 48 38" fill="none"><rect width="48" height="38" rx="8" fill="#016FD0"/><text x="7" y="24" font-size="14" font-weight="800" fill="#fff" font-family="-apple-system,sans-serif">AMEX</text></svg>
+      </div>
+      <h3>Ready to switch from Cash Back to Membership Rewards<sup style="font-size:10px;">®</sup> points?</h3>
+    </div>
+    <div class="modal-body">
+      <p>Connect your Membership Rewards® account to earn Membership Rewards® points instead of Cash Back.</p>
+      <p>Any confirmed Cash Back earned before switching to points will be converted at the rate of 1% = 1X points, and transferred to your Membership Rewards® account on the next transfer date.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-connect" onclick="closeAmexModal()">Connect Membership Rewards®</button>
+      <button class="btn-check-anyway" onclick="closeAmexModal()">No thanks, keep Cash Back</button>
+    </div>
+  </div>
+</div>
+
 <!-- View toggle bar -->
 <div class="view-toggle-bar">
   <span class="view-toggle-label">Preview as:</span>
@@ -718,7 +804,50 @@
   function switchToMethod(id) {
     selectMethod(id);
   }
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCheckModal(); });
+  function openVenmoModal() {
+    document.getElementById('venmoOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeVenmoModal() {
+    document.getElementById('venmoOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  function overlayClickVenmo(e) {
+    if (e.target === document.getElementById('venmoOverlay')) closeVenmoModal();
+  }
+
+  function openPaypalModal() {
+    document.getElementById('paypalOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  function closePaypalModal() {
+    document.getElementById('paypalOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  function overlayClickPaypal(e) {
+    if (e.target === document.getElementById('paypalOverlay')) closePaypalModal();
+  }
+
+  function openAmexModal() {
+    document.getElementById('amexOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeAmexModal() {
+    document.getElementById('amexOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  function overlayClickAmex(e) {
+    if (e.target === document.getElementById('amexOverlay')) closeAmexModal();
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeCheckModal();
+      closeVenmoModal();
+      closePaypalModal();
+      closeAmexModal();
+    }
+  });
 
   function setViewMode(mode) {
     if (mode === 'check') {
