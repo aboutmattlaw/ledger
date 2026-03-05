@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Methods · Rakuten</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #222; min-height: 100vh; }
+
+    /* ── Top nav ── */
+    .topnav {
+      background: #cc0000;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 0 40px;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,.18);
+    }
+    .topnav-logo { display: flex; align-items: center; gap: 10px; }
+    .topnav-logo h1 { color: #fff; font-size: 20px; font-weight: 800; letter-spacing: -.3px; }
+    .topnav-spacer { flex: 1; }
+    .topnav-links { display: flex; gap: 24px; align-items: center; }
+    .topnav-links a { color: rgba(255,255,255,.75); font-size: 13px; text-decoration: none; font-weight: 500; }
+    .topnav-links a:hover { color: #fff; }
+    .topnav-divider { width: 1px; height: 18px; background: rgba(255,255,255,.25); }
+    .topnav-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(255,255,255,.22);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 13px; font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      padding: 44px 40px 100px;
+      gap: 0;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 210px;
+      flex-shrink: 0;
+      margin-right: 40px;
+    }
+    .sidebar-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: #aaa;
+      margin-bottom: 14px; padding-left: 14px;
+    }
+    .sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: 9px;
+      font-size: 14px; font-weight: 500; color: #666;
+      cursor: pointer; text-decoration: none;
+      transition: background .12s, color .12s;
+    }
+    .sidebar-link:hover { background: #efefef; color: #222; }
+    .sidebar-link.active { background: #ede9fe; color: #6D28D9; font-weight: 600; }
+    .sidebar-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+
+    /* ── Main ── */
+    .main { flex: 1; min-width: 0; }
+    .main-header { margin-bottom: 24px; }
+    .main-title { font-size: 26px; font-weight: 700; color: #111; margin-bottom: 4px; }
+    .main-subtitle { font-size: 14px; color: #999; }
+
+    /* ── Section ── */
+    .section { margin-bottom: 32px; }
+    .section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: #bbb;
+      margin-bottom: 12px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 14px rgba(0,0,0,.07);
+    }
+
+    /* ── Confirmed cash back banner ── */
+    .confirmed-banner {
+      display: flex; align-items: center; gap: 16px;
+      background: #f0fdf4;
+      border: 1.5px solid #a7f3d0;
+      border-radius: 14px;
+      padding: 18px 24px;
+      margin-bottom: 28px;
+    }
+    .confirmed-icon { font-size: 26px; flex-shrink: 0; }
+    .confirmed-body { flex: 1; }
+    .confirmed-label {
+      font-size: 11px; font-weight: 700; color: #059669;
+      letter-spacing: 0.5px; text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .confirmed-amount { font-size: 28px; font-weight: 800; color: #065F46; line-height: 1; }
+    .confirmed-note { font-size: 12px; color: #6EE7B7; margin-top: 3px; }
+    .btn-redeem-cta {
+      background: #059669; color: #fff;
+      border: none; border-radius: 99px;
+      padding: 11px 22px; font-size: 13px; font-weight: 700;
+      cursor: pointer; flex-shrink: 0; white-space: nowrap;
+      text-decoration: none; display: inline-block;
+      transition: background .15s;
+    }
+    .btn-redeem-cta:hover { background: #047857; }
+
+    /* ── Method group labels ── */
+    .method-group-label {
+      padding: 8px 24px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.6px;
+      text-transform: uppercase;
+      background: #f9fdf9; color: #059669;
+      border-bottom: 1px solid #f2f2f2;
+    }
+    .method-group-label-scheduled {
+      background: #f8f8fb; color: #888;
+      border-top: 1px solid #f2f2f2;
+    }
+
+    /* ── Payment method options ── */
+    .method-option {
+      display: flex; align-items: flex-start; gap: 16px;
+      padding: 20px 24px;
+      border-bottom: 1px solid #f2f2f2;
+      cursor: pointer;
+      transition: background .12s;
+    }
+    .method-option:last-child { border-bottom: none; }
+    .method-option:hover { background: #fafafa; }
+    .method-option.selected { background: #fffef9; }
+
+    .radio-wrap { padding-top: 2px; flex-shrink: 0; }
+    .radio {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid #ddd;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color .15s;
+    }
+    .method-option.selected .radio { border-color: #6D28D9; }
+    .radio-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #6D28D9; opacity: 0; transition: opacity .15s;
+    }
+    .method-option.selected .radio-dot { opacity: 1; }
+
+    .method-icon {
+      width: 46px; height: 46px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 22px;
+    }
+    .method-body { flex: 1; }
+    .method-name { font-size: 15px; font-weight: 600; color: #222; margin-bottom: 3px; }
+    .method-desc { font-size: 13px; color: #aaa; line-height: 1.4; }
+    .method-badges { display: flex; gap: 7px; margin-top: 8px; flex-wrap: wrap; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 700;
+      padding: 3px 9px; border-radius: 99px;
+    }
+    .badge-instant { background: #FEF3C7; color: #D97706; }
+    .badge-boost  { background: #F0FDF4; color: #16A34A; }
+    .badge-new    { background: #ede9fe; color: #7C3AED; }
+
+    /* ── Gift card redemption panel ── */
+    .redeem-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .4s cubic-bezier(.4,0,.2,1), opacity .3s;
+      opacity: 0;
+      border-top: 0px solid transparent;
+    }
+    .redeem-panel.open {
+      max-height: 600px;
+      opacity: 1;
+      border-top: 1px solid #fde68a;
+    }
+    .redeem-panel-inner {
+      background: linear-gradient(160deg, #fffbeb 0%, #fef3c7 100%);
+      padding: 22px 24px;
+    }
+
+    .redeem-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+    .redeem-balance-label { font-size: 11px; font-weight: 700; color: #D97706; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .redeem-balance-amt  { font-size: 32px; font-weight: 800; color: #78350F; line-height: 1; }
+    .redeem-balance-sub  { font-size: 12px; color: #B45309; margin-top: 4px; }
+    .redeem-boost-pill {
+      background: #fff; border: 1.5px solid #fcd34d;
+      border-radius: 10px; padding: 8px 14px; text-align: right;
+    }
+    .redeem-boost-pill-label { font-size: 10px; color: #D97706; font-weight: 600; }
+    .redeem-boost-pill-val   { font-size: 18px; font-weight: 800; color: #16A34A; }
+
+    /* Merchant grid */
+    .merchant-grid { display: flex; gap: 10px; margin-bottom: 20px; }
+    .merchant-tile {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 6px;
+      padding: 14px 8px; border-radius: 12px;
+      background: #fff; cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .merchant-tile:hover { border-color: #fcd34d; }
+    .merchant-tile.chosen { border-color: #F59E0B; box-shadow: 0 0 0 3px rgba(245,158,11,.12); }
+    .merchant-icon {
+      width: 42px; height: 42px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 19px; font-weight: 900;
+    }
+    .merchant-name  { font-size: 12px; font-weight: 600; color: #333; }
+    .merchant-boost { font-size: 10px; font-weight: 700; color: #16A34A; }
+
+    /* Amount input row */
+    .redeem-amount-section { margin-bottom: 16px; }
+    .redeem-amount-label {
+      font-size: 12px; font-weight: 600; color: #92400E;
+      margin-bottom: 8px;
+    }
+    .redeem-amount-row { display: flex; align-items: center; gap: 10px; }
+    .amount-input {
+      width: 160px; padding: 10px 14px;
+      border: 1.5px solid #fcd34d; border-radius: 9px;
+      font-size: 18px; font-weight: 700; color: #78350F;
+      background: #fff; outline: none;
+    }
+    .amount-input:focus { border-color: #F59E0B; }
+    .amount-max-link { font-size: 12px; font-weight: 600; color: #B45309; cursor: pointer; }
+    .amount-max-link:hover { text-decoration: underline; }
+
+    .redeem-trigger {
+      display: inline-block; margin-top: 8px;
+      font-size: 13px; font-weight: 600; color: #F59E0B;
+      cursor: pointer;
+    }
+    .redeem-trigger:hover { text-decoration: underline; }
+    .method-option:not(.selected) .redeem-trigger { display: none; }
+
+    /* Redemption result note */
+    .redeem-note {
+      font-size: 12px; color: #B45309; margin-top: 6px; line-height: 1.4;
+    }
+
+    /* Redeem button */
+    .btn-redeem {
+      width: 100%; padding: 13px;
+      background: #F59E0B; color: #fff;
+      border: none; border-radius: 99px;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: background .15s;
+    }
+    .btn-redeem:hover { background: #D97706; }
+
+    /* ── Check text link ── */
+    .check-row {
+      padding: 13px 24px;
+      font-size: 13px; color: #ccc;
+      border-top: 1px solid #f2f2f2;
+      text-align: center;
+    }
+    .text-link { color: #6D28D9; font-weight: 600; cursor: pointer; }
+    .text-link:hover { text-decoration: underline; }
+
+    /* ── Notifications ── */
+    .notif-row {
+      display: flex; align-items: center; gap: 16px;
+      padding: 20px 24px; border-bottom: 1px solid #f2f2f2;
+    }
+    .notif-row:last-child { border-bottom: none; }
+    .notif-body { flex: 1; }
+    .notif-title { font-size: 14px; font-weight: 600; color: #222; margin-bottom: 3px; }
+    .notif-desc  { font-size: 13px; color: #aaa; line-height: 1.4; }
+    .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track {
+      position: absolute; inset: 0; border-radius: 99px;
+      background: #ddd; transition: background .2s;
+    }
+    .toggle-track::after {
+      content: ''; position: absolute;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; top: 3px; left: 3px;
+      transition: transform .2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .toggle input:checked + .toggle-track { background: #6D28D9; }
+    .toggle input:checked + .toggle-track::after { transform: translateX(20px); }
+
+    /* ── Check nudge modal ── */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.42); z-index: 200;
+      justify-content: center; align-items: center; padding: 24px;
+    }
+    .overlay.active { display: flex; }
+    .modal-box {
+      width: 100%; max-width: 420px; background: #fff;
+      border-radius: 20px; overflow: hidden;
+      animation: popUp .28s cubic-bezier(.4,0,.2,1) both;
+    }
+    @keyframes popUp {
+      from { opacity: 0; transform: translateY(20px) scale(.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-head {
+      background: #fafafa; padding: 22px 22px 16px;
+      border-bottom: 1px solid #f0f0f0; text-align: center;
+    }
+    .modal-emoji { font-size: 30px; margin-bottom: 8px; }
+    .modal-head h3 { font-size: 16px; font-weight: 700; color: #111; margin-bottom: 5px; }
+    .modal-head p  { font-size: 13px; color: #999; line-height: 1.45; }
+    .modal-list { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+    .modal-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 14px; border-radius: 12px;
+      cursor: pointer; transition: background .14s;
+    }
+    .modal-item:hover { background: #f7f5ff; }
+    .modal-item-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 900; flex-shrink: 0;
+    }
+    .modal-item-name { font-size: 14px; font-weight: 600; color: #222; margin-bottom: 3px; }
+    .modal-item-desc { font-size: 12px; color: #888; line-height: 1.4; }
+    .tag-instant { color: #059669; font-size: 11px; font-weight: 600; margin-left: 4px; }
+    .modal-foot {
+      padding: 12px 18px 18px; border-top: 1px solid #f3f3f3; text-align: center;
+    }
+    .btn-check-anyway {
+      width: 100%; padding: 10px;
+      background: none; border: 1.5px solid #e0e0e0;
+      color: #bbb; font-size: 13px; font-weight: 600;
+      border-radius: 99px; cursor: pointer;
+      transition: border-color .14s, color .14s;
+    }
+    .btn-check-anyway:hover { border-color: #aaa; color: #888; }
+
+    footer {
+      text-align: center; padding: 28px 0 24px;
+      font-size: 12px; color: #b5b0cc; letter-spacing: .03em;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top nav -->
+<nav class="topnav">
+  <div class="topnav-logo">
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <circle cx="16" cy="16" r="16" fill="rgba(255,255,255,.15)"/>
+      <text x="7" y="22" font-size="16" font-weight="900" fill="#fff" font-family="Georgia,serif">R</text>
+    </svg>
+    <h1>Rakuten</h1>
+  </div>
+  <div class="topnav-spacer"></div>
+  <div class="topnav-links">
+    <a href="#">Shop</a>
+    <a href="#">Deals</a>
+    <a href="#">Refer &amp; Earn</a>
+    <div class="topnav-divider"></div>
+  </div>
+  <div class="topnav-avatar">M</div>
+</nav>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-title">Account</div>
+    <nav class="sidebar-nav">
+      <a class="sidebar-link" href="#">
+        <span class="sidebar-icon">👤</span> Personal Info
+      </a>
+      <a class="sidebar-link active" href="#">
+        <span class="sidebar-icon">💳</span> Payment Methods
+      </a>
+      <a class="sidebar-link" href="#">
+        <span class="sidebar-icon">🔔</span> Notifications
+      </a>
+      <a class="sidebar-link" href="#">
+        <span class="sidebar-icon">🔒</span> Password &amp; Security
+      </a>
+      <a class="sidebar-link" href="#">
+        <span class="sidebar-icon">🛡️</span> Privacy
+      </a>
+      <a class="sidebar-link" href="#">
+        <span class="sidebar-icon">🎁</span> Refer a Friend
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <div class="main-header">
+      <h2 class="main-title">Get Paid Instantly Via Gift Cards</h2>
+    </div>
+
+    <!-- Confirmed cash back banner -->
+    <div class="confirmed-banner" id="confirmedBanner">
+      <div class="confirmed-icon">✅</div>
+      <div class="confirmed-body">
+        <div class="confirmed-label">Confirmed Cash Back · Ready to Redeem</div>
+        <div class="confirmed-amount">$1.77</div>
+        <div class="confirmed-note">From purchases at Nike, Macy's, and 3 others</div>
+      </div>
+      <a class="btn-redeem-cta" href="https://www.rakuten.com/gift-cards/redeem-cash-back">Redeem now →</a>
+    </div>
+
+    <!-- How you're getting paid -->
+    <div class="section">
+      <div class="section-label">How you're getting paid</div>
+      <div class="card">
+
+        <div class="method-group-label">⚡ Instant</div>
+
+        <!-- Gift Cards (selected by default) -->
+        <div class="method-option selected" id="opt-gift" onclick="selectMethod('gift')">
+          <div class="radio-wrap"><div class="radio"><div class="radio-dot"></div></div></div>
+          <div class="method-icon" style="background:#fff7ed;">🎁</div>
+          <div class="method-body">
+            <div class="method-name">Gift Cards</div>
+            <div class="method-desc">Get paid instantly — no waiting on us. Redeem your confirmed Cash Back as a gift card from 200+ retailers the moment you're ready. You're in control.</div>
+            <div class="method-badges">
+              <span class="badge badge-instant">⚡ Instant</span>
+              <span class="badge badge-boost">↑ Up to 5% bonus</span>
+            </div>
+            <span class="redeem-trigger" id="redeemTrigger" onclick="event.stopPropagation(); toggleRedeemPanel()">Redeem up to $1.77 →</span>
+          </div>
+        </div>
+
+        <!-- Redemption panel -->
+        <div class="redeem-panel" id="redeemPanel">
+          <div class="redeem-panel-inner">
+
+            <div class="redeem-top">
+              <div>
+                <div class="redeem-balance-label">Available to redeem</div>
+                <div class="redeem-balance-amt">$1.77</div>
+                <div class="redeem-balance-sub">Confirmed cash back</div>
+              </div>
+            </div>
+
+            <!-- Partial redemption amount -->
+            <div class="redeem-amount-section">
+              <div class="redeem-amount-label">Amount to redeem</div>
+              <div class="redeem-amount-row">
+                <input class="amount-input" type="text" id="redeemAmt" value="$1.77" />
+                <span class="amount-max-link" onclick="setFullBalance()">Use full balance</span>
+              </div>
+            </div>
+
+            <button class="btn-redeem" id="redeemBtn">Redeem $1.77 as a Gift Card</button>
+          </div>
+        </div>
+
+        <div class="method-group-label method-group-label-scheduled">🗓 Scheduled · Every 3 months</div>
+
+        <!-- Venmo -->
+        <div class="method-option" id="opt-venmo" onclick="selectMethod('venmo')">
+          <div class="radio-wrap"><div class="radio"><div class="radio-dot"></div></div></div>
+          <div class="method-icon" style="background:#e8f5fb;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <text x="3" y="18" font-size="18" font-weight="900" fill="#008CFF" font-family="-apple-system,sans-serif">V</text>
+            </svg>
+          </div>
+          <div class="method-body">
+            <div class="method-name">Venmo</div>
+            <div class="method-desc">Cash Back is paid to your Venmo balance once every 3 months.</div>
+            <div class="method-badges">
+              <span class="badge badge-new">New</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PayPal -->
+        <div class="method-option" id="opt-paypal" onclick="selectMethod('paypal')">
+          <div class="radio-wrap"><div class="radio"><div class="radio-dot"></div></div></div>
+          <div class="method-icon" style="background:#e8f0fb;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <text x="4" y="18" font-size="20" font-weight="900" fill="#003087" font-family="-apple-system,sans-serif">P</text>
+            </svg>
+          </div>
+          <div class="method-body">
+            <div class="method-name">PayPal</div>
+            <div class="method-desc">Cash Back is paid to your PayPal balance once every 3 months.</div>
+          </div>
+        </div>
+
+        <!-- Membership Rewards -->
+        <div class="method-option" id="opt-amex" onclick="selectMethod('amex')">
+          <div class="radio-wrap"><div class="radio"><div class="radio-dot"></div></div></div>
+          <div class="method-icon" style="background:#e8f4fd;">
+            <svg width="28" height="22" viewBox="0 0 28 22" fill="none">
+              <rect x="0" y="0" width="28" height="22" rx="4" fill="#016FD0"/>
+              <text x="4" y="14" font-size="8" font-weight="800" fill="#fff" font-family="-apple-system,sans-serif">AMEX</text>
+            </svg>
+          </div>
+          <div class="method-body">
+            <div class="method-name">Membership Rewards<sup style="font-size:10px;">®</sup></div>
+            <div class="method-desc">Amex points are credited to your Membership Rewards account once every 3 months.</div>
+          </div>
+        </div>
+
+        <!-- Big Fat Check (de-emphasized text link) -->
+        <div class="check-row">
+          Prefer a physical check? <span class="text-link" onclick="openCheckModal()">Switch to Big Fat Check</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Notification preferences -->
+    <div class="section">
+      <div class="section-label">Notifications</div>
+      <div class="card">
+        <div class="notif-row">
+          <div class="notif-body">
+            <div class="notif-title">Cash Back confirmed</div>
+            <div class="notif-desc">Get notified the moment your Cash Back is confirmed and ready to redeem.</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" checked />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="notif-row">
+          <div class="notif-body">
+            <div class="notif-title">Gift card bonuses available</div>
+            <div class="notif-desc">Hear about limited-time boost offers from top retailers.</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" checked />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="notif-row">
+          <div class="notif-body">
+            <div class="notif-title">Quarterly Big Fat Check reminder</div>
+            <div class="notif-desc">Be reminded when your check is on the way — typically 90 days after the quarter ends.</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Check nudge modal -->
+<div class="overlay" id="checkOverlay" onclick="overlayClick(event)">
+  <div class="modal-box" id="checkModal">
+    <div class="modal-head">
+      <div class="modal-emoji">📬</div>
+      <h3>Checks take up to 90 days</h3>
+      <p>Your Cash Back is confirmed and ready right now. Here are faster ways to access it.</p>
+    </div>
+    <div class="modal-list">
+      <div class="modal-item" onclick="switchToMethod('gift'); closeCheckModal()">
+        <div class="modal-item-icon" style="background:#fff7ed; font-size:18px;">🎁</div>
+        <div>
+          <div class="modal-item-name">Gift Cards <span class="tag-instant">⚡ Instant + up to 5% bonus</span></div>
+          <div class="modal-item-desc">Redeem as Amazon, Walmart, or Target gift cards — often at a bonus rate. $1.86 from your $1.77 with the Amazon boost.</div>
+        </div>
+      </div>
+      <div class="modal-item" onclick="switchToMethod('venmo'); closeCheckModal()">
+        <div class="modal-item-icon" style="background:#e8f5fb; color:#008CFF; font-weight:900;">V</div>
+        <div>
+          <div class="modal-item-name">Venmo</div>
+          <div class="modal-item-desc">Lands in your Venmo balance the same day your Cash Back is confirmed.</div>
+        </div>
+      </div>
+      <div class="modal-item" onclick="switchToMethod('paypal'); closeCheckModal()">
+        <div class="modal-item-icon" style="background:#e8f0fb; color:#003087; font-weight:900; font-size:18px;">P</div>
+        <div>
+          <div class="modal-item-name">PayPal</div>
+          <div class="modal-item-desc">Direct to your PayPal — spend it anywhere PayPal is accepted.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-check-anyway" onclick="closeCheckModal()">No thanks, mail me a check</button>
+    </div>
+  </div>
+</div>
+
+<footer>made with ♥ in nyc</footer>
+
+<script>
+  const BALANCE = 1.77;
+
+  function selectMethod(id) {
+    document.querySelectorAll('.method-option').forEach(el => el.classList.remove('selected'));
+    document.getElementById('opt-' + id).classList.add('selected');
+    if (id !== 'gift') {
+      document.getElementById('redeemPanel').classList.remove('open');
+    }
+  }
+
+  function toggleRedeemPanel() {
+    document.getElementById('redeemPanel').classList.toggle('open');
+  }
+
+  function activateGiftCard() {
+    selectMethod('gift');
+    document.getElementById('redeemPanel').classList.add('open');
+    setTimeout(() => {
+      document.getElementById('redeemPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+  }
+
+  function setFullBalance() {
+    document.getElementById('redeemAmt').value = '$' + BALANCE.toFixed(2);
+  }
+
+  function openCheckModal() {
+    document.getElementById('checkOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeCheckModal() {
+    document.getElementById('checkOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  function overlayClick(e) {
+    if (e.target === document.getElementById('checkOverlay')) closeCheckModal();
+  }
+  function switchToMethod(id) {
+    selectMethod(id);
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCheckModal(); });
+</script>
+</body>
+</html>
