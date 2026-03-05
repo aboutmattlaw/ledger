@@ -228,6 +228,14 @@
     .amount-max-link { font-size: 12px; font-weight: 600; color: #B45309; cursor: pointer; }
     .amount-max-link:hover { text-decoration: underline; }
 
+    .redeem-trigger {
+      display: inline-block; margin-top: 8px;
+      font-size: 13px; font-weight: 600; color: #F59E0B;
+      cursor: pointer;
+    }
+    .redeem-trigger:hover { text-decoration: underline; }
+    .method-option:not(.selected) .redeem-trigger { display: none; }
+
     /* Redemption result note */
     .redeem-note {
       font-size: 12px; color: #B45309; margin-top: 6px; line-height: 1.4;
@@ -417,11 +425,12 @@
               <span class="badge badge-instant">⚡ Instant</span>
               <span class="badge badge-boost">↑ Up to 5% bonus</span>
             </div>
+            <span class="redeem-trigger" id="redeemTrigger" onclick="event.stopPropagation(); toggleRedeemPanel()">Redeem $1.77 →</span>
           </div>
         </div>
 
-        <!-- Redemption panel (expands when Gift Cards is selected) -->
-        <div class="redeem-panel open" id="redeemPanel">
+        <!-- Redemption panel -->
+        <div class="redeem-panel" id="redeemPanel">
           <div class="redeem-panel-inner">
 
             <div class="redeem-top">
@@ -584,16 +593,18 @@
   function selectMethod(id) {
     document.querySelectorAll('.method-option').forEach(el => el.classList.remove('selected'));
     document.getElementById('opt-' + id).classList.add('selected');
-    const panel = document.getElementById('redeemPanel');
-    if (id === 'gift') {
-      panel.classList.add('open');
-    } else {
-      panel.classList.remove('open');
+    if (id !== 'gift') {
+      document.getElementById('redeemPanel').classList.remove('open');
     }
+  }
+
+  function toggleRedeemPanel() {
+    document.getElementById('redeemPanel').classList.toggle('open');
   }
 
   function activateGiftCard() {
     selectMethod('gift');
+    document.getElementById('redeemPanel').classList.add('open');
     setTimeout(() => {
       document.getElementById('redeemPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 50);
