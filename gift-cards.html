@@ -658,7 +658,7 @@
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn-check-anyway" onclick="closeCheckModal()">No thanks, mail me a check</button>
+      <button class="btn-check-anyway" onclick="closeCheckModal(); setViewMode('check')">No thanks, please send me checks.</button>
     </div>
   </div>
 </div>
@@ -678,6 +678,9 @@
   const BALANCE = 23.53;
 
   function selectMethod(id) {
+    if (document.body.classList.contains('check-mode')) {
+      setViewMode('gift-cards');
+    }
     document.querySelectorAll('.method-option').forEach(el => el.classList.remove('selected'));
     document.getElementById('opt-' + id).classList.add('selected');
     if (id !== 'gift') {
