@@ -430,50 +430,18 @@
                 <div class="redeem-balance-amt">$1.77</div>
                 <div class="redeem-balance-sub">Confirmed cash back</div>
               </div>
-              <div class="redeem-boost-pill">
-                <div class="redeem-boost-pill-label">Amazon bonus today</div>
-                <div class="redeem-boost-pill-val">+5%</div>
-              </div>
-            </div>
-
-            <!-- Merchant selection -->
-            <div style="font-size:12px; font-weight:600; color:#92400E; margin-bottom:10px;">Choose a retailer</div>
-            <div class="merchant-grid">
-              <div class="merchant-tile chosen" onclick="chooseMerchant(this, 'Amazon', 5)">
-                <div class="merchant-icon" style="background:#fff8f0; color:#EA580C;">A</div>
-                <div class="merchant-name">Amazon</div>
-                <div class="merchant-boost">+5% bonus</div>
-              </div>
-              <div class="merchant-tile" onclick="chooseMerchant(this, 'Target', 4)">
-                <div class="merchant-icon" style="background:#fff0f0; color:#c00;">T</div>
-                <div class="merchant-name">Target</div>
-                <div class="merchant-boost">+4% bonus</div>
-              </div>
-              <div class="merchant-tile" onclick="chooseMerchant(this, 'Walmart', 3)">
-                <div class="merchant-icon" style="background:#f0f7ff; color:#2563EB;">W</div>
-                <div class="merchant-name">Walmart</div>
-                <div class="merchant-boost">+3% bonus</div>
-              </div>
-              <div class="merchant-tile" onclick="chooseMerchant(this, 'More', 0)">
-                <div class="merchant-icon" style="background:#f4f4f4; color:#888; font-size:22px; font-weight:400;">···</div>
-                <div class="merchant-name">More</div>
-                <div class="merchant-boost" style="color:#aaa;">200+ options</div>
-              </div>
             </div>
 
             <!-- Partial redemption amount -->
             <div class="redeem-amount-section">
               <div class="redeem-amount-label">Amount to redeem</div>
               <div class="redeem-amount-row">
-                <input class="amount-input" type="text" id="redeemAmt" value="$1.77" oninput="updateRedeemNote()" />
+                <input class="amount-input" type="text" id="redeemAmt" value="$1.77" />
                 <span class="amount-max-link" onclick="setFullBalance()">Use full balance</span>
-              </div>
-              <div class="redeem-note" id="redeemNote">
-                You'll receive an <strong>Amazon gift card for $1.86</strong> (includes +5% bonus)
               </div>
             </div>
 
-            <button class="btn-redeem" id="redeemBtn">Redeem $1.77 as Amazon Gift Card</button>
+            <button class="btn-redeem" id="redeemBtn">Redeem $1.77 as a Gift Card</button>
           </div>
         </div>
 
@@ -611,8 +579,6 @@
 <footer>made with ♥ in nyc</footer>
 
 <script>
-  let currentMerchant = 'Amazon';
-  let currentBoost = 5;
   const BALANCE = 1.77;
 
   function selectMethod(id) {
@@ -633,31 +599,8 @@
     }, 50);
   }
 
-  function chooseMerchant(el, name, boost) {
-    document.querySelectorAll('.merchant-tile').forEach(t => t.classList.remove('chosen'));
-    el.classList.add('chosen');
-    currentMerchant = name;
-    currentBoost = boost;
-    updateRedeemNote();
-  }
-
   function setFullBalance() {
     document.getElementById('redeemAmt').value = '$' + BALANCE.toFixed(2);
-    updateRedeemNote();
-  }
-
-  function updateRedeemNote() {
-    const raw = document.getElementById('redeemAmt').value.replace(/[^0-9.]/g, '');
-    const amt = parseFloat(raw) || 0;
-    const boosted = (amt * (1 + currentBoost / 100)).toFixed(2);
-    const note = document.getElementById('redeemNote');
-    const btn  = document.getElementById('redeemBtn');
-    if (currentBoost > 0) {
-      note.innerHTML = `You'll receive a <strong>${currentMerchant} gift card for $${boosted}</strong> (includes +${currentBoost}% bonus)`;
-    } else {
-      note.innerHTML = `You'll receive a <strong>${currentMerchant} gift card for $${amt.toFixed(2)}</strong>`;
-    }
-    btn.textContent = `Redeem $${amt.toFixed(2)} as ${currentMerchant} Gift Card`;
   }
 
   function openCheckModal() {
