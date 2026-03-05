@@ -113,9 +113,23 @@
       border: none; border-radius: 99px;
       padding: 11px 22px; font-size: 13px; font-weight: 700;
       cursor: pointer; flex-shrink: 0; white-space: nowrap;
+      text-decoration: none; display: inline-block;
       transition: background .15s;
     }
     .btn-redeem-cta:hover { background: #047857; }
+
+    /* ── Method group labels ── */
+    .method-group-label {
+      padding: 8px 24px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.6px;
+      text-transform: uppercase;
+      background: #f9fdf9; color: #059669;
+      border-bottom: 1px solid #f2f2f2;
+    }
+    .method-group-label-scheduled {
+      background: #f8f8fb; color: #888;
+      border-top: 1px solid #f2f2f2;
+    }
 
     /* ── Payment method options ── */
     .method-option {
@@ -394,8 +408,7 @@
   <main class="main">
 
     <div class="main-header">
-      <h2 class="main-title">Payment Methods</h2>
-      <p class="main-subtitle">Choose how you'd like to receive your Cash Back</p>
+      <h2 class="main-title">Get Paid Instantly Via Gift Cards</h2>
     </div>
 
     <!-- Confirmed cash back banner -->
@@ -406,7 +419,7 @@
         <div class="confirmed-amount">$1.77</div>
         <div class="confirmed-note">From purchases at Nike, Macy's, and 3 others</div>
       </div>
-      <button class="btn-redeem-cta" onclick="activateGiftCard()">Redeem now →</button>
+      <a class="btn-redeem-cta" href="https://www.rakuten.com/gift-cards/redeem-cash-back">Redeem now →</a>
     </div>
 
     <!-- How you're getting paid -->
@@ -414,18 +427,20 @@
       <div class="section-label">How you're getting paid</div>
       <div class="card">
 
+        <div class="method-group-label">⚡ Instant</div>
+
         <!-- Gift Cards (selected by default) -->
         <div class="method-option selected" id="opt-gift" onclick="selectMethod('gift')">
           <div class="radio-wrap"><div class="radio"><div class="radio-dot"></div></div></div>
           <div class="method-icon" style="background:#fff7ed;">🎁</div>
           <div class="method-body">
             <div class="method-name">Gift Cards</div>
-            <div class="method-desc">Choose from 200+ retailers. Delivered digitally in minutes. Often at a bonus rate.</div>
+            <div class="method-desc">Get paid instantly — no waiting on us. Redeem your confirmed Cash Back as a gift card from 200+ retailers the moment you're ready. You're in control.</div>
             <div class="method-badges">
               <span class="badge badge-instant">⚡ Instant</span>
               <span class="badge badge-boost">↑ Up to 5% bonus</span>
             </div>
-            <span class="redeem-trigger" id="redeemTrigger" onclick="event.stopPropagation(); toggleRedeemPanel()">Redeem $1.77 →</span>
+            <span class="redeem-trigger" id="redeemTrigger" onclick="event.stopPropagation(); toggleRedeemPanel()">Redeem up to $1.77 →</span>
           </div>
         </div>
 
@@ -454,6 +469,8 @@
           </div>
         </div>
 
+        <div class="method-group-label method-group-label-scheduled">🗓 Scheduled · Every 3 months</div>
+
         <!-- Venmo -->
         <div class="method-option" id="opt-venmo" onclick="selectMethod('venmo')">
           <div class="radio-wrap"><div class="radio"><div class="radio-dot"></div></div></div>
@@ -464,7 +481,7 @@
           </div>
           <div class="method-body">
             <div class="method-name">Venmo</div>
-            <div class="method-desc">Funds land in your Venmo balance as soon as Cash Back is confirmed.</div>
+            <div class="method-desc">Cash Back is paid to your Venmo balance once every 3 months.</div>
             <div class="method-badges">
               <span class="badge badge-new">New</span>
             </div>
@@ -481,7 +498,7 @@
           </div>
           <div class="method-body">
             <div class="method-name">PayPal</div>
-            <div class="method-desc">Direct to your PayPal balance — spend it anywhere PayPal is accepted.</div>
+            <div class="method-desc">Cash Back is paid to your PayPal balance once every 3 months.</div>
           </div>
         </div>
 
@@ -496,7 +513,7 @@
           </div>
           <div class="method-body">
             <div class="method-name">Membership Rewards<sup style="font-size:10px;">®</sup></div>
-            <div class="method-desc">Convert your Cash Back directly to Amex points.</div>
+            <div class="method-desc">Amex points are credited to your Membership Rewards account once every 3 months.</div>
           </div>
         </div>
 
@@ -567,14 +584,14 @@
       <div class="modal-item" onclick="switchToMethod('venmo'); closeCheckModal()">
         <div class="modal-item-icon" style="background:#e8f5fb; color:#008CFF; font-weight:900;">V</div>
         <div>
-          <div class="modal-item-name">Venmo <span class="tag-instant">⚡ Instant</span></div>
+          <div class="modal-item-name">Venmo</div>
           <div class="modal-item-desc">Lands in your Venmo balance the same day your Cash Back is confirmed.</div>
         </div>
       </div>
       <div class="modal-item" onclick="switchToMethod('paypal'); closeCheckModal()">
         <div class="modal-item-icon" style="background:#e8f0fb; color:#003087; font-weight:900; font-size:18px;">P</div>
         <div>
-          <div class="modal-item-name">PayPal <span class="tag-instant">⚡ Instant</span></div>
+          <div class="modal-item-name">PayPal</div>
           <div class="modal-item-desc">Direct to your PayPal — spend it anywhere PayPal is accepted.</div>
         </div>
       </div>
