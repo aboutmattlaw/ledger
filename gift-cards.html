@@ -350,8 +350,44 @@
     }
     .btn-check-anyway:hover { border-color: #aaa; color: #888; }
 
+    /* ── Check mode toggle ── */
+    .check-selected-row { display: none; }
+    body.check-mode .check-selected-row { display: flex; }
+    body.check-mode #checkTextRow { display: none; }
+    body.check-mode .opt-check .radio { border-color: #6D28D9; }
+
+    /* In check-mode: confirmed banner shows nudge CTA instead */
+    .btn-redeem-cta { transition: background .15s; }
+    body.check-mode .confirmed-banner { background: #fff8f0; border-color: #fcd34d; }
+    body.check-mode .confirmed-label { color: #D97706; }
+    body.check-mode .confirmed-amount { color: #92400E; }
+    body.check-mode .confirmed-note { color: #F59E0B; }
+    body.check-mode .btn-redeem-cta { background: #F59E0B; }
+    body.check-mode .btn-redeem-cta:hover { background: #D97706; }
+    body.check-mode .confirmed-icon::after { content: ''; }
+
+    /* ── View toggle bar ── */
+    .view-toggle-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #1e1e2e; padding: 12px 24px;
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      z-index: 300; box-shadow: 0 -2px 12px rgba(0,0,0,.18);
+    }
+    .view-toggle-label { font-size: 12px; color: rgba(255,255,255,.5); font-weight: 500; }
+    .toggle-pill {
+      display: flex; align-items: center; gap: 0;
+      background: #2e2e42; border-radius: 99px; padding: 3px;
+    }
+    .toggle-pill-btn {
+      font-size: 12px; font-weight: 600; padding: 6px 16px;
+      border-radius: 99px; border: none; cursor: pointer;
+      background: none; color: rgba(255,255,255,.45);
+      transition: background .15s, color .15s;
+    }
+    .toggle-pill-btn.active { background: #6D28D9; color: #fff; }
+
     footer {
-      text-align: center; padding: 28px 0 24px;
+      text-align: center; padding: 28px 0 72px;
       font-size: 12px; color: #b5b0cc; letter-spacing: .03em;
     }
   </style>
@@ -416,8 +452,8 @@
       <div class="confirmed-icon">✅</div>
       <div class="confirmed-body">
         <div class="confirmed-label">Confirmed Cash Back · Ready to Redeem</div>
-        <div class="confirmed-amount">$1.77</div>
-        <div class="confirmed-note">From purchases at Nike, Macy's, and 3 others</div>
+        <div class="confirmed-amount">$23.53</div>
+        <div class="confirmed-note">Redeem at Amazon, Target, Walmart, Starbucks, and 200+ more</div>
       </div>
       <a class="btn-redeem-cta" href="https://www.rakuten.com/gift-cards/redeem-cash-back">Redeem now →</a>
     </div>
@@ -440,7 +476,7 @@
               <span class="badge badge-instant">⚡ Instant</span>
               <span class="badge badge-boost">↑ Up to 5% bonus</span>
             </div>
-            <span class="redeem-trigger" id="redeemTrigger" onclick="event.stopPropagation(); toggleRedeemPanel()">Redeem up to $1.77 →</span>
+            <span class="redeem-trigger" id="redeemTrigger" onclick="event.stopPropagation(); toggleRedeemPanel()">Redeem up to $23.53 →</span>
           </div>
         </div>
 
@@ -451,7 +487,7 @@
             <div class="redeem-top">
               <div>
                 <div class="redeem-balance-label">Available to redeem</div>
-                <div class="redeem-balance-amt">$1.77</div>
+                <div class="redeem-balance-amt">$23.53</div>
                 <div class="redeem-balance-sub">Confirmed cash back</div>
               </div>
             </div>
@@ -460,12 +496,12 @@
             <div class="redeem-amount-section">
               <div class="redeem-amount-label">Amount to redeem</div>
               <div class="redeem-amount-row">
-                <input class="amount-input" type="text" id="redeemAmt" value="$1.77" />
+                <input class="amount-input" type="text" id="redeemAmt" value="$23.53" />
                 <span class="amount-max-link" onclick="setFullBalance()">Use full balance</span>
               </div>
             </div>
 
-            <button class="btn-redeem" id="redeemBtn">Redeem $1.77 as a Gift Card</button>
+            <button class="btn-redeem" id="redeemBtn">Redeem $23.53 as a Gift Card</button>
           </div>
         </div>
 
@@ -517,9 +553,34 @@
           </div>
         </div>
 
-        <!-- Big Fat Check (de-emphasized text link) -->
-        <div class="check-row">
+        <!-- Big Fat Check (de-emphasized text link) — hidden in check-mode -->
+        <div class="check-row" id="checkTextRow">
           Prefer a physical check? <span class="text-link" onclick="openCheckModal()">Switch to Big Fat Check</span>
+        </div>
+
+        <!-- Big Fat Check as selected method — only shown in check-mode -->
+        <div class="method-option check-selected-row" id="opt-check">
+          <div class="radio-wrap"><div class="radio check-radio"><div class="radio-dot" style="opacity:1;"></div></div></div>
+          <div class="method-icon" style="background:#f5f5f5;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="6" width="20" height="13" rx="2" stroke="#888" stroke-width="1.8" fill="none"/>
+              <line x1="6" y1="11" x2="14" y2="11" stroke="#888" stroke-width="1.5"/>
+              <line x1="6" y1="14" x2="10" y2="14" stroke="#888" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <div class="method-body">
+            <div class="method-name" style="color:#888;">Big Fat Check</div>
+            <div class="method-desc" style="color:#bbb;">A check mailed to your address on file. Takes up to 90 days to arrive.</div>
+            <div class="method-badges" style="margin-top:6px;">
+              <span class="badge" style="background:#fafafa; color:#bbb; border:1px solid #eee;">🐌 Up to 90 days</span>
+            </div>
+          </div>
+          <div style="flex-shrink:0;">
+            <span class="badge-selected" style="background:#f5f5f5; color:#bbb;">
+              <svg viewBox="0 0 12 12" fill="none" stroke="#bbb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="1.5,6 5,9.5 10.5,2.5"/></svg>
+              Selected
+            </span>
+          </div>
         </div>
 
       </div>
@@ -578,7 +639,7 @@
         <div class="modal-item-icon" style="background:#fff7ed; font-size:18px;">🎁</div>
         <div>
           <div class="modal-item-name">Gift Cards <span class="tag-instant">⚡ Instant + up to 5% bonus</span></div>
-          <div class="modal-item-desc">Redeem as Amazon, Walmart, or Target gift cards — often at a bonus rate. $1.86 from your $1.77 with the Amazon boost.</div>
+          <div class="modal-item-desc">Redeem as Amazon, Walmart, or Target gift cards — often at a bonus rate. $1.86 from your $23.53 with the Amazon boost.</div>
         </div>
       </div>
       <div class="modal-item" onclick="switchToMethod('venmo'); closeCheckModal()">
@@ -602,10 +663,19 @@
   </div>
 </div>
 
+<!-- View toggle bar -->
+<div class="view-toggle-bar">
+  <span class="view-toggle-label">Preview as:</span>
+  <div class="toggle-pill">
+    <button class="toggle-pill-btn active" id="btnGiftCards" onclick="setViewMode('gift-cards')">🎁 Gift Cards selected</button>
+    <button class="toggle-pill-btn" id="btnCheck" onclick="setViewMode('check')">📬 Check selected</button>
+  </div>
+</div>
+
 <footer>made with ♥ in nyc</footer>
 
 <script>
-  const BALANCE = 1.77;
+  const BALANCE = 23.53;
 
   function selectMethod(id) {
     document.querySelectorAll('.method-option').forEach(el => el.classList.remove('selected'));
@@ -646,6 +716,23 @@
     selectMethod(id);
   }
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCheckModal(); });
+
+  function setViewMode(mode) {
+    if (mode === 'check') {
+      document.body.classList.add('check-mode');
+      document.getElementById('btnCheck').classList.add('active');
+      document.getElementById('btnGiftCards').classList.remove('active');
+      // Deselect all methods, select check visually
+      document.querySelectorAll('.method-option').forEach(el => el.classList.remove('selected'));
+      document.getElementById('redeemPanel').classList.remove('open');
+    } else {
+      document.body.classList.remove('check-mode');
+      document.getElementById('btnGiftCards').classList.add('active');
+      document.getElementById('btnCheck').classList.remove('active');
+      // Re-select gift cards
+      document.getElementById('opt-gift').classList.add('selected');
+    }
+  }
 </script>
 </body>
 </html>
