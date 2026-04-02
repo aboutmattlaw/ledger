@@ -228,54 +228,44 @@
     let hitboxes = [];
     let stars = null, starsW = 0, starsH = 0;
 
-    // ── Fallback TLEs (used if CelesTrak unreachable) ─────────────────────────
-    // These are placeholder TLEs — real angles won't be correct in offline mode
+    // ── Fallback TLEs (real, fetched 2026-04-01 — used if live API unreachable) ─
     const FB = {
       iss: [
-        '1 25544U 98067A   26090.50000000  .00016717  00000-0  30271-3 0  9999',
-        '2 25544  51.6400 100.0000 0001098  50.0000  60.0000 15.50000000  1234'
+        '1 25544U 98067A   26091.87535882  .00008601  00000+0  16573-3 0  9993',
+        '2 25544  51.6331 317.7347 0006236 261.1612  98.8670 15.48704825559921'
       ],
       tiangong: [
-        '1 48274U 21035A   26090.50000000  .00003699  00000-0  69069-4 0  9999',
-        '2 48274  41.4672 200.0000 0006578 180.0000 200.0000 15.61356524  5678'
+        '1 48274U 21035A   26091.36022109  .00024066  00000+0  27286-3 0  9992',
+        '2 48274  41.4670  70.0996 0003721  85.9086 274.2179 15.61804306281152'
       ]
     };
 
-    // ── Fetch TLEs from CelesTrak ─────────────────────────────────────────────
+    // ── Fetch TLEs from tle.ivanstanojevic.me (CORS-enabled JSON API) ────────
     async function fetchTLEs() {
-      let liveCount = 0;
-      try {
-        const r = await fetch(
-          'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle'
-        );
+      const fetchOne = async (norad) => {
+        const r = await fetch(`https://tle.ivanstanojevic.me/api/tle/${norad}`);
         if (!r.ok) throw new Error('HTTP ' + r.status);
-        const text  = await r.text();
-        const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-        const found = { iss: false, tiangong: false };
+        const d = await r.json();
+        return satellite.twoline2satrec(d.line1, d.line2);
+      };
 
-        for (let i = 0; i < lines.length - 2; i++) {
-          const l1 = lines[i + 1], l2 = lines[i + 2];
-          if (!l1?.startsWith('1 ') || !l2?.startsWith('2 ')) continue;
-          const cat = l1.slice(2, 7).trim();
-          if (cat === '25544') {
-            satrecs.iss      = satellite.twoline2satrec(l1, l2);
-            found.iss        = true;
-          } else if (cat === '48274') {
-            satrecs.tiangong = satellite.twoline2satrec(l1, l2);
-            found.tiangong   = true;
-          }
-          i += 2;
-        }
+      let liveCount = 0;
 
-        if (!satrecs.iss)      satrecs.iss      = satellite.twoline2satrec(...FB.iss);
-        if (!satrecs.tiangong) satrecs.tiangong = satellite.twoline2satrec(...FB.tiangong);
-        liveCount = Object.values(found).filter(Boolean).length;
-
+      try {
+        satrecs.iss = await fetchOne(25544);
+        liveCount++;
       } catch {
-        satrecs.iss      = satellite.twoline2satrec(...FB.iss);
-        satrecs.tiangong = satellite.twoline2satrec(...FB.tiangong);
-        noteEl.style.display = 'block';
+        satrecs.iss = satellite.twoline2satrec(...FB.iss);
       }
+
+      try {
+        satrecs.tiangong = await fetchOne(48274);
+        liveCount++;
+      } catch {
+        satrecs.tiangong = satellite.twoline2satrec(...FB.tiangong);
+        if (liveCount === 0) noteEl.style.display = 'block';
+      }
+
       return liveCount;
     }
 
