@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Space Toilets — Live Tracker</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #06060f;
+      color: #c0c8e0;
+      font-family: ui-monospace, 'SF Mono', 'Menlo', 'Consolas', monospace;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 0 20px;
+      height: 44px;
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.025);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    #header h1 {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.28em;
+      color: #fff;
+      white-space: nowrap;
+    }
+    #header .count {
+      font-size: 12px;
+      color: #6af5c8;
+      letter-spacing: 0.08em;
+    }
+    #header .spacer { flex: 1; }
+    #header .status {
+      font-size: 11px;
+      color: #445566;
+    }
+
+    #main {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #panel {
+      position: absolute;
+      right: 16px;
+      top: 16px;
+      width: 196px;
+      background: rgba(6,6,20,0.88);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 10px;
+      padding: 14px 16px 16px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    #panel h2 {
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      color: #334455;
+      text-transform: uppercase;
+      margin-bottom: 13px;
+    }
+    .v-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 2.5px 0;
+      font-size: 11px;
+    }
+    .v-row.sub { padding-left: 16px; }
+    .v-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .v-name  { flex: 1; color: #99aabb; }
+    .v-dname { flex: 1; color: #445566; font-size: 10px; }
+    .v-count { font-weight: 600; color: #dde0ee; }
+    .v-dcount { font-weight: 600; color: #445566; font-size: 11px; }
+    .divider {
+      border-top: 1px solid rgba(255,255,255,0.05);
+      margin: 8px 0;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #6af5c8;
+      font-weight: 600;
+      padding-top: 2px;
+    }
+
+    #tooltip {
+      position: absolute;
+      pointer-events: none;
+      display: none;
+      background: rgba(4,4,16,0.95);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 7px;
+      padding: 9px 13px;
+      font-size: 11px;
+      line-height: 1.75;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    #footnote {
+      position: absolute;
+      bottom: 10px;
+      left: 14px;
+      font-size: 9.5px;
+      color: rgba(255,255,255,0.16);
+      letter-spacing: 0.04em;
+      pointer-events: none;
+    }
+
+    #serve-note {
+      position: absolute;
+      bottom: 28px;
+      left: 14px;
+      font-size: 9.5px;
+      color: rgba(255,180,60,0.5);
+      letter-spacing: 0.03em;
+      pointer-events: none;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>SPACE TOILETS</h1>
+    <div class="count">10 CURRENTLY IN ORBIT</div>
+    <div class="spacer"></div>
+    <div class="status" id="status">Connecting…</div>
+  </div>
+
+  <div id="main">
+    <canvas id="c"></canvas>
+
+    <div id="panel">
+      <h2>Vehicles &amp; Facilities</h2>
+
+      <div class="v-row">
+        <div class="v-dot" style="background:#44aaff"></div>
+        <span class="v-name">ISS</span>
+        <span class="v-count">4</span>
+      </div>
+      <div class="v-row sub">
+        <div class="v-dot" style="background:#44aaff;opacity:0.38"></div>
+        <span class="v-dname">Crew Dragon (docked)</span>
+        <span class="v-dcount">1</span>
+      </div>
+      <div class="v-row sub">
+        <div class="v-dot" style="background:#44aaff;opacity:0.38"></div>
+        <span class="v-dname">Soyuz (docked)</span>
+        <span class="v-dcount">1</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="v-row">
+        <div class="v-dot" style="background:#ff8844"></div>
+        <span class="v-name">Tiangong CSS</span>
+        <span class="v-count">2</span>
+      </div>
+      <div class="v-row sub">
+        <div class="v-dot" style="background:#ff8844;opacity:0.38"></div>
+        <span class="v-dname">Shenzhou (docked)</span>
+        <span class="v-dcount">1</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="v-row">
+        <div class="v-dot" style="background:#aaff55"></div>
+        <span class="v-name">Artemis II Orion</span>
+        <span class="v-count">1</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="total-row">
+        <span>TOTAL</span>
+        <span>10 🚽</span>
+      </div>
+    </div>
+
+    <div id="tooltip"></div>
+    <div id="footnote">NOT TO SCALE &middot; LEO orbits exaggerated for visibility</div>
+    <div id="serve-note">⚠ Open via a local server (e.g. python -m http.server) for live data</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/satellite.js/dist/satellite.min.js"></script>
+  <script>
+  (() => {
+    'use strict';
+
+    const canvas  = document.getElementById('c');
+    const ctx     = canvas.getContext('2d');
+    const statusEl = document.getElementById('status');
+    const tipEl    = document.getElementById('tooltip');
+    const noteEl   = document.getElementById('serve-note');
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    const satrecs = { iss: null, tiangong: null };
+    const pos     = { iss: null, tiangong: null, moon: null, artemis: null };
+    let artemisApprox  = true;
+    let artemisLastFetch = 0;
+    let hitboxes = [];
+    let stars = null, starsW = 0, starsH = 0;
+
+    // ── Fallback TLEs (used if CelesTrak unreachable) ─────────────────────────
+    // These are placeholder TLEs — real angles won't be correct in offline mode
+    const FB = {
+      iss: [
+        '1 25544U 98067A   26090.50000000  .00016717  00000-0  30271-3 0  9999',
+        '2 25544  51.6400 100.0000 0001098  50.0000  60.0000 15.50000000  1234'
+      ],
+      tiangong: [
+        '1 48274U 21035A   26090.50000000  .00003699  00000-0  69069-4 0  9999',
+        '2 48274  41.4672 200.0000 0006578 180.0000 200.0000 15.61356524  5678'
+      ]
+    };
+
+    // ── Fetch TLEs from CelesTrak ─────────────────────────────────────────────
+    async function fetchTLEs() {
+      let liveCount = 0;
+      try {
+        const r = await fetch(
+          'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle'
+        );
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const text  = await r.text();
+        const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+        const found = { iss: false, tiangong: false };
+
+        for (let i = 0; i < lines.length - 2; i++) {
+          const l1 = lines[i + 1], l2 = lines[i + 2];
+          if (!l1?.startsWith('1 ') || !l2?.startsWith('2 ')) continue;
+          const cat = l1.slice(2, 7).trim();
+          if (cat === '25544') {
+            satrecs.iss      = satellite.twoline2satrec(l1, l2);
+            found.iss        = true;
+          } else if (cat === '48274') {
+            satrecs.tiangong = satellite.twoline2satrec(l1, l2);
+            found.tiangong   = true;
+          }
+          i += 2;
+        }
+
+        if (!satrecs.iss)      satrecs.iss      = satellite.twoline2satrec(...FB.iss);
+        if (!satrecs.tiangong) satrecs.tiangong = satellite.twoline2satrec(...FB.tiangong);
+        liveCount = Object.values(found).filter(Boolean).length;
+
+      } catch {
+        satrecs.iss      = satellite.twoline2satrec(...FB.iss);
+        satrecs.tiangong = satellite.twoline2satrec(...FB.tiangong);
+        noteEl.style.display = 'block';
+      }
+      return liveCount;
+    }
+
+    // ── Moon: geocentric ECI J2000 (km) ──────────────────────────────────────
+    function moonECI(date) {
+      const MS_J2000 = 946728000000;
+      const D   = (date - MS_J2000) / 86400000;
+      const d2r = Math.PI / 180;
+
+      const L  = (218.316 + 13.176396 * D) % 360;
+      const M  = ((134.963 + 13.064993 * D) % 360) * d2r;
+      const F  = ((93.272  + 13.229350 * D) % 360) * d2r;
+      const DM = ((297.850 + 12.190749 * D) % 360) * d2r;
+
+      const lon  = (L
+        + 6.289 * Math.sin(M)
+        - 1.274 * Math.sin(2 * DM - M)
+        + 0.658 * Math.sin(2 * DM)
+        - 0.214 * Math.sin(2 * M)) * d2r;
+
+      const lat  = (5.128 * Math.sin(F)) * d2r;
+      const dist = 385001 - 20905 * Math.cos(M) - 3699 * Math.cos(2 * DM - M);
+
+      const eps  = (23.439 - 0.0000004 * D) * d2r;
+      const xe   = dist * Math.cos(lat) * Math.cos(lon);
+      const ye   = dist * Math.cos(lat) * Math.sin(lon);
+      const ze   = dist * Math.sin(lat);
+
+      return {
+        x: xe,
+        y: ye * Math.cos(eps) - ze * Math.sin(eps),
+        z: ye * Math.sin(eps) + ze * Math.cos(eps),
+        dist
+      };
+    }
+
+    // ── Artemis II: JPL Horizons (geocentric ECI J2000, km) ──────────────────
+    async function fetchArtemis(date) {
+      const pad2 = n => String(n).padStart(2, '0');
+      const fmtDate = d =>
+        `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ` +
+        `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+      const stop = new Date(date.getTime() + 120_000);
+
+      const params = new URLSearchParams({
+        format:      'json',
+        COMMAND:     '-1024',   // Artemis II Orion
+        OBJ_DATA:    'NO',
+        MAKE_EPHEM:  'YES',
+        EPHEM_TYPE:  'VECTORS',
+        CENTER:      '500@399', // geocenter
+        START_TIME:  fmtDate(date),
+        STOP_TIME:   fmtDate(stop),
+        STEP_SIZE:   '2 m',
+        VEC_TABLE:   '1',
+        OUT_UNITS:   'KM-S',
+        REF_PLANE:   'FRAME',
+        REF_SYSTEM:  'J2000',
+        CSV_FORMAT:  'NO'
+      });
+
+      try {
+        const r = await fetch(`https://ssd.jpl.nasa.gov/api/horizons.api?${params}`);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        const txt  = data.result || '';
+        const soe  = txt.indexOf('$$SOE');
+        const eoe  = txt.indexOf('$$EOE');
+        if (soe === -1) throw new Error('no ephemeris');
+        const block = txt.slice(soe + 5, eoe).trim();
+
+        for (const line of block.split('\n')) {
+          // matches e.g.  X = 1.23456E+05  or  X =-1.23456E+05
+          const xm = line.match(/\bX\s*=\s*([+-]?[\d.]+[Ee][+-]?\d+)/);
+          const ym = line.match(/\bY\s*=\s*([+-]?[\d.]+[Ee][+-]?\d+)/);
+          const zm = line.match(/\bZ\s*=\s*([+-]?[\d.]+[Ee][+-]?\d+)/);
+          if (xm && ym && zm) {
+            artemisApprox = false;
+            return { x: +xm[1], y: +ym[1], z: +zm[1] };
+          }
+        }
+        throw new Error('parse failed');
+      } catch (e) {
+        console.warn('Artemis II position unavailable:', e.message);
+        artemisApprox = true;
+        return null;
+      }
+    }
+
+    // ── Satellite ECI position (km) ───────────────────────────────────────────
+    function satECI(satrec, date) {
+      if (!satrec) return null;
+      try {
+        const pv = satellite.propagate(satrec, date);
+        if (!pv?.position || pv.position === true) return null;
+        return pv.position;
+      } catch { return null; }
+    }
+
+    // ── Canvas resize ─────────────────────────────────────────────────────────
+    function resize() {
+      canvas.width  = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      stars = null; // regenerate
+    }
+
+    // ── Stars (seeded, regenerated on resize) ─────────────────────────────────
+    function ensureStars(W, H) {
+      if (stars && starsW === W && starsH === H) return;
+      starsW = W; starsH = H;
+      const lcg = s => ((Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967295;
+      stars = Array.from({ length: 260 }, (_, i) => {
+        let s = (i * 2654435761) >>> 0;
+        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+        const x = lcg(s) * W;
+        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+        const y = lcg(s) * H;
+        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+        const r = lcg(s) * 1.2 + 0.15;
+        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+        const a = lcg(s) * 0.55 + 0.2;
+        return { x, y, r, a };
+      });
+    }
+
+    // ── Draw helpers ──────────────────────────────────────────────────────────
+    function glow(x, y, innerR, outerR, color) {
+      const g = ctx.createRadialGradient(x, y, innerR, x, y, outerR);
+      g.addColorStop(0, color + '44');
+      g.addColorStop(1, color + '00');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, outerR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function orbitRing(cx, cy, r, color) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 0.8;
+      ctx.setLineDash([3, 6]);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawLabel(x, y, line1, line2, color) {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = color || 'rgba(255,255,255,0.8)';
+      ctx.font = '10.5px ui-monospace, monospace';
+      ctx.fillText(line1, x, y);
+      if (line2) {
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = '9.5px ui-monospace, monospace';
+        ctx.fillText(line2, x, y + 13);
+      }
+    }
+
+    // ── Main draw ─────────────────────────────────────────────────────────────
+    function draw() {
+      const W = canvas.width, H = canvas.height;
+      hitboxes = [];
+
+      ctx.fillStyle = '#06060f';
+      ctx.fillRect(0, 0, W, H);
+
+      ensureStars(W, H);
+      stars.forEach(s => {
+        ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Coordinate layout
+      // Panel is ~228px on right; Earth sits 38% into remaining draw area
+      const panelGutter = 228;
+      const drawW  = W - panelGutter;
+      const earthX = drawW * 0.38;
+      const earthY = H * 0.5;
+
+      // Scale: Moon fits in available space
+      const moonDist = pos.moon?.dist ?? 384400;
+      const maxPx    = Math.min(drawW * 0.54, H * 0.44);
+      const scale    = maxPx / moonDist;
+
+      // Exaggerated LEO display radii
+      const leoISS  = maxPx * 0.115;
+      const leoTSS  = maxPx * 0.140;
+
+      // ── Orbit rings ─────────────────────────────────────────────────────────
+      orbitRing(earthX, earthY, maxPx,    'rgba(255,255,255,0.045)'); // Moon
+      orbitRing(earthX, earthY, leoISS,   'rgba(68,170,255,0.18)');   // ISS
+      orbitRing(earthX, earthY, leoTSS,   'rgba(255,136,68,0.18)');   // Tiangong
+
+      // ── Earth ────────────────────────────────────────────────────────────────
+      const eR = 18;
+      glow(earthX, earthY, eR, eR * 5.5, '#2266cc');
+      const eg = ctx.createRadialGradient(earthX - 4, earthY - 5, 2, earthX, earthY, eR);
+      eg.addColorStop(0,   '#72b8ff');
+      eg.addColorStop(0.4, '#2466cc');
+      eg.addColorStop(0.75,'#163a8a');
+      eg.addColorStop(1,   '#0a1840');
+      ctx.fillStyle = eg;
+      ctx.beginPath();
+      ctx.arc(earthX, earthY, eR, 0, Math.PI * 2);
+      ctx.fill();
+      drawLabel(earthX, earthY + eR + 14, 'EARTH', null, 'rgba(255,255,255,0.55)');
+
+      // ── Moon ─────────────────────────────────────────────────────────────────
+      if (pos.moon) {
+        const mx = earthX + pos.moon.x * scale;
+        const my = earthY - pos.moon.y * scale;
+        const mR = 8;
+
+        glow(mx, my, mR, mR * 4.5, '#aaaacc');
+        const mg = ctx.createRadialGradient(mx - 2, my - 2, 1, mx, my, mR);
+        mg.addColorStop(0,   '#ffffff');
+        mg.addColorStop(0.5, '#ccccdd');
+        mg.addColorStop(1,   '#7f8099');
+        ctx.fillStyle = mg;
+        ctx.beginPath();
+        ctx.arc(mx, my, mR, 0, Math.PI * 2);
+        ctx.fill();
+
+        drawLabel(mx, my + mR + 14, 'MOON', null, 'rgba(255,255,255,0.5)');
+        hitboxes.push({
+          x: mx, y: my, r: mR + 10,
+          html: `<b>MOON</b><br>Dist from Earth: ${Math.round(moonDist).toLocaleString()} km`
+        });
+      }
+
+      // ── ISS cluster (ISS + Crew Dragon + Soyuz) ───────────────────────────
+      if (pos.iss) {
+        const ang  = Math.atan2(pos.iss.y, pos.iss.x);
+        const ix   = earthX + leoISS * Math.cos(ang);
+        const iy   = earthY - leoISS * Math.sin(ang);
+        const altK = Math.round(Math.sqrt(pos.iss.x**2 + pos.iss.y**2 + pos.iss.z**2) - 6371);
+
+        glow(ix, iy, 7, 36, '#44aaff');
+
+        // ISS body
+        ctx.fillStyle = '#44aaff';
+        ctx.beginPath();
+        ctx.arc(ix, iy, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Crew Dragon (docked)
+        ctx.fillStyle = 'rgba(68,170,255,0.55)';
+        ctx.beginPath();
+        ctx.arc(ix + 6, iy - 5, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Soyuz (docked)
+        ctx.beginPath();
+        ctx.arc(ix - 5, iy + 6, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        drawLabel(ix, iy + 7 + 14, 'ISS', '6 🚽');
+
+        hitboxes.push({
+          x: ix, y: iy, r: 22,
+          html: `<b>ISS CLUSTER</b><br>Alt: ~${altK.toLocaleString()} km<br>` +
+                `ISS: 4 toilets<br>Crew Dragon (docked): 1<br>Soyuz (docked): 1`
+        });
+      }
+
+      // ── Tiangong cluster (Tiangong + Shenzhou) ────────────────────────────
+      if (pos.tiangong) {
+        const ang  = Math.atan2(pos.tiangong.y, pos.tiangong.x);
+        const tx   = earthX + leoTSS * Math.cos(ang);
+        const ty   = earthY - leoTSS * Math.sin(ang);
+        const altK = Math.round(Math.sqrt(pos.tiangong.x**2 + pos.tiangong.y**2 + pos.tiangong.z**2) - 6371);
+
+        glow(tx, ty, 6, 32, '#ff8844');
+
+        ctx.fillStyle = '#ff8844';
+        ctx.beginPath();
+        ctx.arc(tx, ty, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Shenzhou (docked)
+        ctx.fillStyle = 'rgba(255,136,68,0.55)';
+        ctx.beginPath();
+        ctx.arc(tx + 5, ty - 5, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        drawLabel(tx, ty + 6 + 14, 'Tiangong', '3 🚽');
+
+        hitboxes.push({
+          x: tx, y: ty, r: 20,
+          html: `<b>TIANGONG CLUSTER</b><br>Alt: ~${altK.toLocaleString()} km<br>` +
+                `Tiangong CSS: 2 toilets<br>Shenzhou (docked): 1`
+        });
+      }
+
+      // ── Artemis II ────────────────────────────────────────────────────────
+      {
+        let ax, ay, distKm;
+        if (pos.artemis) {
+          ax    = earthX + pos.artemis.x * scale;
+          ay    = earthY - pos.artemis.y * scale;
+          distKm = Math.round(Math.sqrt(pos.artemis.x**2 + pos.artemis.y**2 + pos.artemis.z**2));
+        } else if (pos.moon) {
+          // Fallback: place ~15° offset from Moon at ~90% of Moon distance
+          const moonAng = Math.atan2(pos.moon.y, pos.moon.x);
+          const artAng  = moonAng - 0.26;
+          const artDist = pos.moon.dist * 0.9;
+          ax    = earthX + artDist * scale * Math.cos(artAng);
+          ay    = earthY - artDist * scale * Math.sin(artAng);
+          distKm = Math.round(artDist);
+        }
+
+        if (ax != null) {
+          glow(ax, ay, 5, 28, '#aaff55');
+
+          // Dashed ring if approximate
+          if (artemisApprox) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(170,255,85,0.4)';
+            ctx.lineWidth   = 1;
+            ctx.setLineDash([2, 3]);
+            ctx.beginPath();
+            ctx.arc(ax, ay, 11, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          ctx.fillStyle = '#aaff55';
+          ctx.beginPath();
+          ctx.arc(ax, ay, 5, 0, Math.PI * 2);
+          ctx.fill();
+
+          drawLabel(ax, ay + 5 + 14, 'Artemis II', '1 🚽');
+
+          hitboxes.push({
+            x: ax, y: ay, r: 18,
+            html: `<b>ARTEMIS II — Orion</b><br>1 toilet<br>` +
+                  (distKm ? `Dist from Earth: ${distKm.toLocaleString()} km<br>` : '') +
+                  (artemisApprox
+                    ? '<span style="color:#aa8833">Position approximate</span>'
+                    : '<span style="color:#6af5c8">Live · JPL Horizons</span>')
+          });
+        }
+      }
+    }
+
+    // ── Tooltip ───────────────────────────────────────────────────────────────
+    canvas.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      const mx   = (e.clientX - rect.left) * (canvas.width  / rect.width);
+      const my   = (e.clientY - rect.top)  * (canvas.height / rect.height);
+      const hit  = hitboxes.find(h => Math.hypot(mx - h.x, my - h.y) < h.r);
+
+      if (hit) {
+        tipEl.style.display = 'block';
+        tipEl.innerHTML     = hit.html;
+        const tx = Math.min(e.clientX + 14, window.innerWidth  - 250);
+        const ty = Math.min(e.clientY - 10, window.innerHeight - 130);
+        tipEl.style.left    = tx + 'px';
+        tipEl.style.top     = ty + 'px';
+        canvas.style.cursor = 'pointer';
+      } else {
+        tipEl.style.display = 'none';
+        canvas.style.cursor = 'default';
+      }
+    });
+    canvas.addEventListener('mouseleave', () => { tipEl.style.display = 'none'; });
+
+    // ── Update: runs every animation frame ────────────────────────────────────
+    function frame() {
+      const now = new Date();
+
+      pos.iss      = satECI(satrecs.iss,      now);
+      pos.tiangong = satECI(satrecs.tiangong, now);
+      pos.moon     = moonECI(now);
+
+      // Refresh Artemis every 5 minutes (async, non-blocking)
+      if (Date.now() - artemisLastFetch > 300_000) {
+        artemisLastFetch = Date.now();
+        fetchArtemis(now).then(p => { if (p) pos.artemis = p; });
+      }
+
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    async function init() {
+      new ResizeObserver(resize).observe(canvas.parentElement);
+      resize();
+
+      statusEl.textContent = 'Fetching orbital data…';
+
+      // Kick off both fetches in parallel
+      const [liveCount, artemisPos] = await Promise.all([
+        fetchTLEs(),
+        fetchArtemis(new Date())
+      ]);
+      artemisLastFetch = Date.now();
+      if (artemisPos) pos.artemis = artemisPos;
+
+      if (liveCount === 2)      statusEl.textContent = `Live · ${new Date().toLocaleTimeString()}`;
+      else if (liveCount === 1) statusEl.textContent = `Partial live · ${new Date().toLocaleTimeString()}`;
+      else                      statusEl.textContent = 'Offline (using fallback data)';
+
+      // Refresh TLEs hourly
+      setInterval(async () => {
+        const c = await fetchTLEs();
+        if (c > 0) statusEl.textContent = `Live · ${new Date().toLocaleTimeString()}`;
+      }, 3_600_000);
+
+      requestAnimationFrame(frame);
+    }
+
+    init();
+  })();
+  </script>
+</body>
+</html>
