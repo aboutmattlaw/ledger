@@ -109,6 +109,45 @@
       padding-top: 2px;
     }
 
+    /* ── Speed controls ─────────────────────────────────────────────────────── */
+    #speed-bar {
+      position: absolute;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(4,4,16,0.88);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 11px;
+      white-space: nowrap;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .spd-label { color: #334455; letter-spacing: 0.1em; margin-right: 3px; }
+    .spd-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #556677;
+      font-family: inherit;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .spd-btn:hover { border-color: rgba(255,255,255,0.28); color: #99aabb; }
+    .spd-btn.active {
+      background: rgba(68,170,255,0.12);
+      border-color: rgba(68,170,255,0.55);
+      color: #44aaff;
+    }
+    .spd-sep { color: rgba(255,255,255,0.1); margin: 0 4px; }
+    #sim-clock { color: #445566; font-size: 10px; min-width: 188px; }
+
     #tooltip {
       position: absolute;
       pointer-events: none;
@@ -125,10 +164,10 @@
 
     #footnote {
       position: absolute;
-      bottom: 10px;
+      bottom: 12px;
       left: 14px;
       font-size: 9.5px;
-      color: rgba(255,255,255,0.16);
+      color: rgba(255,255,255,0.14);
       letter-spacing: 0.04em;
       pointer-events: none;
     }
@@ -158,7 +197,6 @@
 
     <div id="panel">
       <h2>Vehicles &amp; Facilities</h2>
-
       <div class="v-row">
         <div class="v-dot" style="background:#44aaff"></div>
         <span class="v-name">ISS</span>
@@ -174,9 +212,7 @@
         <span class="v-dname">Soyuz (docked)</span>
         <span class="v-dcount">1</span>
       </div>
-
       <div class="divider"></div>
-
       <div class="v-row">
         <div class="v-dot" style="background:#ff8844"></div>
         <span class="v-name">Tiangong CSS</span>
@@ -187,21 +223,28 @@
         <span class="v-dname">Shenzhou (docked)</span>
         <span class="v-dcount">1</span>
       </div>
-
       <div class="divider"></div>
-
       <div class="v-row">
         <div class="v-dot" style="background:#aaff55"></div>
         <span class="v-name">Artemis II Orion</span>
         <span class="v-count">1</span>
       </div>
-
       <div class="divider"></div>
-
       <div class="total-row">
         <span>TOTAL</span>
         <span>10 🚽</span>
       </div>
+    </div>
+
+    <div id="speed-bar">
+      <span class="spd-label">SPEED</span>
+      <button class="spd-btn" data-mult="1">1×</button>
+      <button class="spd-btn" data-mult="10">10×</button>
+      <button class="spd-btn active" data-mult="60">60×</button>
+      <button class="spd-btn" data-mult="600">600×</button>
+      <button class="spd-btn" data-mult="3600">3600×</button>
+      <span class="spd-sep">|</span>
+      <span id="sim-clock">—</span>
     </div>
 
     <div id="tooltip"></div>
@@ -214,21 +257,58 @@
   (() => {
     'use strict';
 
-    const canvas  = document.getElementById('c');
-    const ctx     = canvas.getContext('2d');
+    const canvas   = document.getElementById('c');
+    const ctx      = canvas.getContext('2d');
     const statusEl = document.getElementById('status');
     const tipEl    = document.getElementById('tooltip');
     const noteEl   = document.getElementById('serve-note');
+    const clockEl  = document.getElementById('sim-clock');
+
+    // ── Simulation time ───────────────────────────────────────────────────────
+    let simSpeed   = 60;          // default: 60× real time
+    let simMs      = Date.now();  // current simulated time (ms since epoch)
+    let lastWallMs = Date.now();
+
+    function tickSim() {
+      const now = Date.now();
+      simMs    += (now - lastWallMs) * simSpeed;
+      lastWallMs = now;
+      return new Date(simMs);
+    }
+
+    // ── Trails ────────────────────────────────────────────────────────────────
+    // Sample every 30 sim-seconds; keep 300 points = ~150 sim-minutes of history
+    const TRAIL_INTERVAL_MS = 30_000;
+    const TRAIL_MAX         = 300;
+    const trails = { iss: [], tiangong: [], moon: [], artemis: [] };
+    let lastTrailMs = null;
+
+    function sampleTrails(simDate) {
+      const t = simDate.getTime();
+      if (lastTrailMs !== null && t - lastTrailMs < TRAIL_INTERVAL_MS) return;
+      lastTrailMs = t;
+      const push = (arr, pt) => { arr.push(pt); if (arr.length > TRAIL_MAX) arr.shift(); };
+      if (pos.iss)      push(trails.iss,      { ang: Math.atan2(pos.iss.y,      pos.iss.x) });
+      if (pos.tiangong) push(trails.tiangong, { ang: Math.atan2(pos.tiangong.y, pos.tiangong.x) });
+      if (pos.moon)     push(trails.moon,     { x: pos.moon.x,     y: pos.moon.y });
+      if (pos.artemis && !artemisApprox)
+                        push(trails.artemis,  { x: pos.artemis.x,  y: pos.artemis.y });
+    }
+
+    function clearTrails() {
+      Object.values(trails).forEach(t => { t.length = 0; });
+      lastTrailMs = null;
+    }
 
     // ── State ─────────────────────────────────────────────────────────────────
     const satrecs = { iss: null, tiangong: null };
     const pos     = { iss: null, tiangong: null, moon: null, artemis: null };
-    let artemisApprox  = true;
+    let artemisApprox    = true;
     let artemisLastFetch = 0;
     let hitboxes = [];
     let stars = null, starsW = 0, starsH = 0;
 
-    // ── Fallback TLEs (real, fetched 2026-04-01 — used if live API unreachable) ─
+    // ── Fallback TLEs (real, fetched 2026-04-01) ──────────────────────────────
     const FB = {
       iss: [
         '1 25544U 98067A   26091.87535882  .00008601  00000+0  16573-3 0  9993',
@@ -240,7 +320,7 @@
       ]
     };
 
-    // ── Fetch TLEs from tle.ivanstanojevic.me (CORS-enabled JSON API) ────────
+    // ── Fetch TLEs ────────────────────────────────────────────────────────────
     async function fetchTLEs() {
       const fetchOne = async (norad) => {
         const r = await fetch(`https://tle.ivanstanojevic.me/api/tle/${norad}`);
@@ -248,24 +328,14 @@
         const d = await r.json();
         return satellite.twoline2satrec(d.line1, d.line2);
       };
-
       let liveCount = 0;
-
-      try {
-        satrecs.iss = await fetchOne(25544);
-        liveCount++;
-      } catch {
-        satrecs.iss = satellite.twoline2satrec(...FB.iss);
-      }
-
-      try {
-        satrecs.tiangong = await fetchOne(48274);
-        liveCount++;
-      } catch {
+      try { satrecs.iss      = await fetchOne(25544); liveCount++; }
+      catch { satrecs.iss      = satellite.twoline2satrec(...FB.iss); }
+      try { satrecs.tiangong = await fetchOne(48274); liveCount++; }
+      catch {
         satrecs.tiangong = satellite.twoline2satrec(...FB.tiangong);
         if (liveCount === 0) noteEl.style.display = 'block';
       }
-
       return liveCount;
     }
 
@@ -274,88 +344,56 @@
       const MS_J2000 = 946728000000;
       const D   = (date - MS_J2000) / 86400000;
       const d2r = Math.PI / 180;
-
       const L  = (218.316 + 13.176396 * D) % 360;
       const M  = ((134.963 + 13.064993 * D) % 360) * d2r;
       const F  = ((93.272  + 13.229350 * D) % 360) * d2r;
       const DM = ((297.850 + 12.190749 * D) % 360) * d2r;
-
-      const lon  = (L
-        + 6.289 * Math.sin(M)
-        - 1.274 * Math.sin(2 * DM - M)
-        + 0.658 * Math.sin(2 * DM)
-        - 0.214 * Math.sin(2 * M)) * d2r;
-
+      const lon  = (L + 6.289 * Math.sin(M) - 1.274 * Math.sin(2*DM-M)
+                      + 0.658 * Math.sin(2*DM) - 0.214 * Math.sin(2*M)) * d2r;
       const lat  = (5.128 * Math.sin(F)) * d2r;
-      const dist = 385001 - 20905 * Math.cos(M) - 3699 * Math.cos(2 * DM - M);
-
+      const dist = 385001 - 20905 * Math.cos(M) - 3699 * Math.cos(2*DM-M);
       const eps  = (23.439 - 0.0000004 * D) * d2r;
-      const xe   = dist * Math.cos(lat) * Math.cos(lon);
-      const ye   = dist * Math.cos(lat) * Math.sin(lon);
-      const ze   = dist * Math.sin(lat);
-
-      return {
-        x: xe,
-        y: ye * Math.cos(eps) - ze * Math.sin(eps),
-        z: ye * Math.sin(eps) + ze * Math.cos(eps),
-        dist
-      };
+      const xe = dist * Math.cos(lat) * Math.cos(lon);
+      const ye = dist * Math.cos(lat) * Math.sin(lon);
+      const ze = dist * Math.sin(lat);
+      return { x: xe, y: ye*Math.cos(eps)-ze*Math.sin(eps),
+               z: ye*Math.sin(eps)+ze*Math.cos(eps), dist };
     }
 
-    // ── Artemis II: JPL Horizons (geocentric ECI J2000, km) ──────────────────
+    // ── Artemis II: JPL Horizons ──────────────────────────────────────────────
     async function fetchArtemis(date) {
       const pad2 = n => String(n).padStart(2, '0');
-      const fmtDate = d =>
-        `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ` +
-        `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+      const fmt  = d => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ` +
+                        `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
       const stop = new Date(date.getTime() + 120_000);
-
       const params = new URLSearchParams({
-        format:      'json',
-        COMMAND:     '-1024',   // Artemis II Orion
-        OBJ_DATA:    'NO',
-        MAKE_EPHEM:  'YES',
-        EPHEM_TYPE:  'VECTORS',
-        CENTER:      '500@399', // geocenter
-        START_TIME:  fmtDate(date),
-        STOP_TIME:   fmtDate(stop),
-        STEP_SIZE:   '2 m',
-        VEC_TABLE:   '1',
-        OUT_UNITS:   'KM-S',
-        REF_PLANE:   'FRAME',
-        REF_SYSTEM:  'J2000',
-        CSV_FORMAT:  'NO'
+        format:'json', COMMAND:'-1024', OBJ_DATA:'NO', MAKE_EPHEM:'YES',
+        EPHEM_TYPE:'VECTORS', CENTER:'500@399', START_TIME:fmt(date), STOP_TIME:fmt(stop),
+        STEP_SIZE:'2 m', VEC_TABLE:'1', OUT_UNITS:'KM-S',
+        REF_PLANE:'FRAME', REF_SYSTEM:'J2000', CSV_FORMAT:'NO'
       });
-
       try {
         const r = await fetch(`https://ssd.jpl.nasa.gov/api/horizons.api?${params}`);
         if (!r.ok) throw new Error('HTTP ' + r.status);
         const data = await r.json();
         const txt  = data.result || '';
-        const soe  = txt.indexOf('$$SOE');
-        const eoe  = txt.indexOf('$$EOE');
+        const soe  = txt.indexOf('$$SOE'), eoe = txt.indexOf('$$EOE');
         if (soe === -1) throw new Error('no ephemeris');
-        const block = txt.slice(soe + 5, eoe).trim();
-
-        for (const line of block.split('\n')) {
-          // matches e.g.  X = 1.23456E+05  or  X =-1.23456E+05
+        for (const line of txt.slice(soe+5, eoe).trim().split('\n')) {
           const xm = line.match(/\bX\s*=\s*([+-]?[\d.]+[Ee][+-]?\d+)/);
           const ym = line.match(/\bY\s*=\s*([+-]?[\d.]+[Ee][+-]?\d+)/);
           const zm = line.match(/\bZ\s*=\s*([+-]?[\d.]+[Ee][+-]?\d+)/);
-          if (xm && ym && zm) {
-            artemisApprox = false;
-            return { x: +xm[1], y: +ym[1], z: +zm[1] };
-          }
+          if (xm && ym && zm) { artemisApprox = false; return { x:+xm[1], y:+ym[1], z:+zm[1] }; }
         }
         throw new Error('parse failed');
       } catch (e) {
-        console.warn('Artemis II position unavailable:', e.message);
+        console.warn('Artemis II unavailable:', e.message);
         artemisApprox = true;
         return null;
       }
     }
 
-    // ── Satellite ECI position (km) ───────────────────────────────────────────
+    // ── Satellite ECI position ────────────────────────────────────────────────
     function satECI(satrec, date) {
       if (!satrec) return null;
       try {
@@ -369,47 +407,41 @@
     function resize() {
       canvas.width  = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
-      stars = null; // regenerate
+      stars = null;
     }
 
-    // ── Stars (seeded, regenerated on resize) ─────────────────────────────────
+    // ── Seeded stars ──────────────────────────────────────────────────────────
     function ensureStars(W, H) {
       if (stars && starsW === W && starsH === H) return;
       starsW = W; starsH = H;
       const lcg = s => ((Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967295;
       stars = Array.from({ length: 260 }, (_, i) => {
         let s = (i * 2654435761) >>> 0;
-        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-        const x = lcg(s) * W;
-        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-        const y = lcg(s) * H;
-        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-        const r = lcg(s) * 1.2 + 0.15;
-        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-        const a = lcg(s) * 0.55 + 0.2;
+        s = (Math.imul(s,1664525)+1013904223)>>>0; const x = lcg(s)*W;
+        s = (Math.imul(s,1664525)+1013904223)>>>0; const y = lcg(s)*H;
+        s = (Math.imul(s,1664525)+1013904223)>>>0; const r = lcg(s)*1.2+0.15;
+        s = (Math.imul(s,1664525)+1013904223)>>>0; const a = lcg(s)*0.55+0.2;
         return { x, y, r, a };
       });
     }
 
     // ── Draw helpers ──────────────────────────────────────────────────────────
+    function hexAlpha(hex, a) {
+      const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+      return `rgba(${r},${g},${b},${a.toFixed(3)})`;
+    }
+
     function glow(x, y, innerR, outerR, color) {
       const g = ctx.createRadialGradient(x, y, innerR, x, y, outerR);
-      g.addColorStop(0, color + '44');
-      g.addColorStop(1, color + '00');
+      g.addColorStop(0, color + '44'); g.addColorStop(1, color + '00');
       ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(x, y, outerR, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, outerR, 0, Math.PI*2); ctx.fill();
     }
 
     function orbitRing(cx, cy, r, color) {
       ctx.save();
-      ctx.strokeStyle = color;
-      ctx.lineWidth   = 0.8;
-      ctx.setLineDash([3, 6]);
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 0.8; ctx.setLineDash([3,6]);
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
       ctx.restore();
     }
 
@@ -421,7 +453,52 @@
       if (line2) {
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = '9.5px ui-monospace, monospace';
-        ctx.fillText(line2, x, y + 13);
+        ctx.fillText(line2, x, y+13);
+      }
+    }
+
+    // Draw a fading trail for an LEO object (stores orbital angle)
+    function drawLEOTrail(trail, dispR, cx, cy, color) {
+      if (trail.length < 2) return;
+      // Draw in bands: 0=faint/old → 1=bright/new
+      const BANDS = 10;
+      for (let b = 0; b < BANDS; b++) {
+        const f0 = b / BANDS, f1 = (b+1) / BANDS;
+        const alpha = f1 * 0.5;
+        const i0 = Math.floor(f0 * trail.length);
+        const i1 = Math.ceil(f1 * trail.length);
+        ctx.strokeStyle = hexAlpha(color, alpha);
+        ctx.lineWidth   = 0.6 + f1 * 1.6;
+        ctx.beginPath();
+        for (let i = i0; i < i1 && i < trail.length; i++) {
+          const x = cx + dispR * Math.cos(trail[i].ang);
+          const y = cy - dispR * Math.sin(trail[i].ang);
+          if (i === i0) { ctx.moveTo(x, y); continue; }
+          // Break path on angle wrap (satellite crossed ±π boundary)
+          if (Math.abs(trail[i].ang - trail[i-1].ang) > Math.PI) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    }
+
+    // Draw a fading trail for a deep-space object (stores ECI x,y)
+    function drawDeepTrail(trail, earthX, earthY, scale, color) {
+      if (trail.length < 2) return;
+      const BANDS = 10;
+      for (let b = 0; b < BANDS; b++) {
+        const f0 = b / BANDS, f1 = (b+1) / BANDS;
+        const i0 = Math.floor(f0 * trail.length);
+        const i1 = Math.ceil(f1 * trail.length);
+        ctx.strokeStyle = hexAlpha(color, f1 * 0.4);
+        ctx.lineWidth   = 0.5 + f1 * 1.0;
+        ctx.beginPath();
+        for (let i = i0; i < i1 && i < trail.length; i++) {
+          const x = earthX + trail[i].x * scale;
+          const y = earthY - trail[i].y * scale;
+          if (i === i0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
       }
     }
 
@@ -436,44 +513,43 @@
       ensureStars(W, H);
       stars.forEach(s => {
         ctx.fillStyle = `rgba(255,255,255,${s.a})`;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
       });
 
-      // Coordinate layout
-      // Panel is ~228px on right; Earth sits 38% into remaining draw area
+      // Layout
       const panelGutter = 228;
       const drawW  = W - panelGutter;
       const earthX = drawW * 0.38;
       const earthY = H * 0.5;
 
-      // Scale: Moon fits in available space
       const moonDist = pos.moon?.dist ?? 384400;
       const maxPx    = Math.min(drawW * 0.54, H * 0.44);
       const scale    = maxPx / moonDist;
 
-      // Exaggerated LEO display radii
-      const leoISS  = maxPx * 0.115;
-      const leoTSS  = maxPx * 0.140;
+      const leoISS = maxPx * 0.115;
+      const leoTSS = maxPx * 0.140;
 
-      // ── Orbit rings ─────────────────────────────────────────────────────────
-      orbitRing(earthX, earthY, maxPx,    'rgba(255,255,255,0.045)'); // Moon
-      orbitRing(earthX, earthY, leoISS,   'rgba(68,170,255,0.18)');   // ISS
-      orbitRing(earthX, earthY, leoTSS,   'rgba(255,136,68,0.18)');   // Tiangong
+      // ── Orbit rings ──────────────────────────────────────────────────────────
+      orbitRing(earthX, earthY, maxPx,  'rgba(255,255,255,0.045)');
+      orbitRing(earthX, earthY, leoISS, 'rgba(68,170,255,0.16)');
+      orbitRing(earthX, earthY, leoTSS, 'rgba(255,136,68,0.16)');
+
+      // ── Trails ───────────────────────────────────────────────────────────────
+      drawLEOTrail(trails.iss,      leoISS, earthX, earthY, '#44aaff');
+      drawLEOTrail(trails.tiangong, leoTSS, earthX, earthY, '#ff8844');
+      drawDeepTrail(trails.moon,    earthX, earthY, scale,   '#9999cc');
+      drawDeepTrail(trails.artemis, earthX, earthY, scale,   '#aaff55');
 
       // ── Earth ────────────────────────────────────────────────────────────────
       const eR = 18;
-      glow(earthX, earthY, eR, eR * 5.5, '#2266cc');
-      const eg = ctx.createRadialGradient(earthX - 4, earthY - 5, 2, earthX, earthY, eR);
-      eg.addColorStop(0,   '#72b8ff');
-      eg.addColorStop(0.4, '#2466cc');
-      eg.addColorStop(0.75,'#163a8a');
-      eg.addColorStop(1,   '#0a1840');
+      glow(earthX, earthY, eR, eR*5.5, '#2266cc');
+      const eg = ctx.createRadialGradient(earthX-4, earthY-5, 2, earthX, earthY, eR);
+      eg.addColorStop(0,    '#72b8ff');
+      eg.addColorStop(0.4,  '#2466cc');
+      eg.addColorStop(0.75, '#163a8a');
+      eg.addColorStop(1,    '#0a1840');
       ctx.fillStyle = eg;
-      ctx.beginPath();
-      ctx.arc(earthX, earthY, eR, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(earthX, earthY, eR, 0, Math.PI*2); ctx.fill();
       drawLabel(earthX, earthY + eR + 14, 'EARTH', null, 'rgba(255,255,255,0.55)');
 
       // ── Moon ─────────────────────────────────────────────────────────────────
@@ -481,135 +557,83 @@
         const mx = earthX + pos.moon.x * scale;
         const my = earthY - pos.moon.y * scale;
         const mR = 8;
-
-        glow(mx, my, mR, mR * 4.5, '#aaaacc');
-        const mg = ctx.createRadialGradient(mx - 2, my - 2, 1, mx, my, mR);
-        mg.addColorStop(0,   '#ffffff');
-        mg.addColorStop(0.5, '#ccccdd');
-        mg.addColorStop(1,   '#7f8099');
+        glow(mx, my, mR, mR*4.5, '#aaaacc');
+        const mg = ctx.createRadialGradient(mx-2, my-2, 1, mx, my, mR);
+        mg.addColorStop(0, '#ffffff'); mg.addColorStop(0.5, '#ccccdd'); mg.addColorStop(1, '#7f8099');
         ctx.fillStyle = mg;
-        ctx.beginPath();
-        ctx.arc(mx, my, mR, 0, Math.PI * 2);
-        ctx.fill();
-
+        ctx.beginPath(); ctx.arc(mx, my, mR, 0, Math.PI*2); ctx.fill();
         drawLabel(mx, my + mR + 14, 'MOON', null, 'rgba(255,255,255,0.5)');
-        hitboxes.push({
-          x: mx, y: my, r: mR + 10,
-          html: `<b>MOON</b><br>Dist from Earth: ${Math.round(moonDist).toLocaleString()} km`
-        });
+        hitboxes.push({ x:mx, y:my, r:mR+10,
+          html:`<b>MOON</b><br>Dist from Earth: ${Math.round(moonDist).toLocaleString()} km` });
       }
 
-      // ── ISS cluster (ISS + Crew Dragon + Soyuz) ───────────────────────────
+      // ── ISS cluster ──────────────────────────────────────────────────────────
       if (pos.iss) {
         const ang  = Math.atan2(pos.iss.y, pos.iss.x);
         const ix   = earthX + leoISS * Math.cos(ang);
         const iy   = earthY - leoISS * Math.sin(ang);
         const altK = Math.round(Math.sqrt(pos.iss.x**2 + pos.iss.y**2 + pos.iss.z**2) - 6371);
-
         glow(ix, iy, 7, 36, '#44aaff');
-
-        // ISS body
         ctx.fillStyle = '#44aaff';
-        ctx.beginPath();
-        ctx.arc(ix, iy, 7, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Crew Dragon (docked)
+        ctx.beginPath(); ctx.arc(ix, iy, 7, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = 'rgba(68,170,255,0.55)';
-        ctx.beginPath();
-        ctx.arc(ix + 6, iy - 5, 3.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Soyuz (docked)
-        ctx.beginPath();
-        ctx.arc(ix - 5, iy + 6, 3.2, 0, Math.PI * 2);
-        ctx.fill();
-
+        ctx.beginPath(); ctx.arc(ix+6, iy-5, 3.2, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ix-5, iy+6, 3.2, 0, Math.PI*2); ctx.fill();
         drawLabel(ix, iy + 7 + 14, 'ISS', '6 🚽');
-
-        hitboxes.push({
-          x: ix, y: iy, r: 22,
-          html: `<b>ISS CLUSTER</b><br>Alt: ~${altK.toLocaleString()} km<br>` +
-                `ISS: 4 toilets<br>Crew Dragon (docked): 1<br>Soyuz (docked): 1`
-        });
+        hitboxes.push({ x:ix, y:iy, r:22,
+          html:`<b>ISS CLUSTER</b><br>Alt: ~${altK.toLocaleString()} km<br>` +
+               `ISS: 4 toilets<br>Crew Dragon (docked): 1<br>Soyuz (docked): 1` });
       }
 
-      // ── Tiangong cluster (Tiangong + Shenzhou) ────────────────────────────
+      // ── Tiangong cluster ─────────────────────────────────────────────────────
       if (pos.tiangong) {
         const ang  = Math.atan2(pos.tiangong.y, pos.tiangong.x);
         const tx   = earthX + leoTSS * Math.cos(ang);
         const ty   = earthY - leoTSS * Math.sin(ang);
         const altK = Math.round(Math.sqrt(pos.tiangong.x**2 + pos.tiangong.y**2 + pos.tiangong.z**2) - 6371);
-
         glow(tx, ty, 6, 32, '#ff8844');
-
         ctx.fillStyle = '#ff8844';
-        ctx.beginPath();
-        ctx.arc(tx, ty, 6, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Shenzhou (docked)
+        ctx.beginPath(); ctx.arc(tx, ty, 6, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = 'rgba(255,136,68,0.55)';
-        ctx.beginPath();
-        ctx.arc(tx + 5, ty - 5, 3, 0, Math.PI * 2);
-        ctx.fill();
-
+        ctx.beginPath(); ctx.arc(tx+5, ty-5, 3, 0, Math.PI*2); ctx.fill();
         drawLabel(tx, ty + 6 + 14, 'Tiangong', '3 🚽');
-
-        hitboxes.push({
-          x: tx, y: ty, r: 20,
-          html: `<b>TIANGONG CLUSTER</b><br>Alt: ~${altK.toLocaleString()} km<br>` +
-                `Tiangong CSS: 2 toilets<br>Shenzhou (docked): 1`
-        });
+        hitboxes.push({ x:tx, y:ty, r:20,
+          html:`<b>TIANGONG CLUSTER</b><br>Alt: ~${altK.toLocaleString()} km<br>` +
+               `Tiangong CSS: 2 toilets<br>Shenzhou (docked): 1` });
       }
 
-      // ── Artemis II ────────────────────────────────────────────────────────
+      // ── Artemis II ────────────────────────────────────────────────────────────
       {
         let ax, ay, distKm;
         if (pos.artemis) {
-          ax    = earthX + pos.artemis.x * scale;
-          ay    = earthY - pos.artemis.y * scale;
+          ax = earthX + pos.artemis.x * scale;
+          ay = earthY - pos.artemis.y * scale;
           distKm = Math.round(Math.sqrt(pos.artemis.x**2 + pos.artemis.y**2 + pos.artemis.z**2));
         } else if (pos.moon) {
-          // Fallback: place ~15° offset from Moon at ~90% of Moon distance
           const moonAng = Math.atan2(pos.moon.y, pos.moon.x);
           const artAng  = moonAng - 0.26;
           const artDist = pos.moon.dist * 0.9;
-          ax    = earthX + artDist * scale * Math.cos(artAng);
-          ay    = earthY - artDist * scale * Math.sin(artAng);
+          ax = earthX + artDist * scale * Math.cos(artAng);
+          ay = earthY - artDist * scale * Math.sin(artAng);
           distKm = Math.round(artDist);
         }
-
         if (ax != null) {
           glow(ax, ay, 5, 28, '#aaff55');
-
-          // Dashed ring if approximate
           if (artemisApprox) {
             ctx.save();
-            ctx.strokeStyle = 'rgba(170,255,85,0.4)';
-            ctx.lineWidth   = 1;
-            ctx.setLineDash([2, 3]);
-            ctx.beginPath();
-            ctx.arc(ax, ay, 11, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.strokeStyle = 'rgba(170,255,85,0.4)'; ctx.lineWidth = 1; ctx.setLineDash([2,3]);
+            ctx.beginPath(); ctx.arc(ax, ay, 11, 0, Math.PI*2); ctx.stroke();
             ctx.restore();
           }
-
           ctx.fillStyle = '#aaff55';
-          ctx.beginPath();
-          ctx.arc(ax, ay, 5, 0, Math.PI * 2);
-          ctx.fill();
-
+          ctx.beginPath(); ctx.arc(ax, ay, 5, 0, Math.PI*2); ctx.fill();
           drawLabel(ax, ay + 5 + 14, 'Artemis II', '1 🚽');
-
-          hitboxes.push({
-            x: ax, y: ay, r: 18,
-            html: `<b>ARTEMIS II — Orion</b><br>1 toilet<br>` +
-                  (distKm ? `Dist from Earth: ${distKm.toLocaleString()} km<br>` : '') +
-                  (artemisApprox
-                    ? '<span style="color:#aa8833">Position approximate</span>'
-                    : '<span style="color:#6af5c8">Live · JPL Horizons</span>')
-          });
+          hitboxes.push({ x:ax, y:ay, r:18,
+            html:`<b>ARTEMIS II — Orion</b><br>1 toilet<br>` +
+                 (distKm ? `Dist from Earth: ${distKm.toLocaleString()} km<br>` : '') +
+                 (artemisApprox
+                   ? '<span style="color:#aa8833">Position approximate</span>'
+                   : '<span style="color:#6af5c8">Live · JPL Horizons</span>') });
         }
       }
     }
@@ -619,15 +643,12 @@
       const rect = canvas.getBoundingClientRect();
       const mx   = (e.clientX - rect.left) * (canvas.width  / rect.width);
       const my   = (e.clientY - rect.top)  * (canvas.height / rect.height);
-      const hit  = hitboxes.find(h => Math.hypot(mx - h.x, my - h.y) < h.r);
-
+      const hit  = hitboxes.find(h => Math.hypot(mx-h.x, my-h.y) < h.r);
       if (hit) {
         tipEl.style.display = 'block';
         tipEl.innerHTML     = hit.html;
-        const tx = Math.min(e.clientX + 14, window.innerWidth  - 250);
-        const ty = Math.min(e.clientY - 10, window.innerHeight - 130);
-        tipEl.style.left    = tx + 'px';
-        tipEl.style.top     = ty + 'px';
+        tipEl.style.left    = Math.min(e.clientX+14, window.innerWidth-250) + 'px';
+        tipEl.style.top     = Math.min(e.clientY-10, window.innerHeight-130) + 'px';
         canvas.style.cursor = 'pointer';
       } else {
         tipEl.style.display = 'none';
@@ -636,21 +657,44 @@
     });
     canvas.addEventListener('mouseleave', () => { tipEl.style.display = 'none'; });
 
-    // ── Update: runs every animation frame ────────────────────────────────────
+    // ── Speed controls ────────────────────────────────────────────────────────
+    document.querySelectorAll('.spd-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        simSpeed   = parseInt(btn.dataset.mult);
+        lastWallMs = Date.now(); // re-anchor wall time
+        clearTrails();
+        document.querySelectorAll('.spd-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // ── Animation frame ───────────────────────────────────────────────────────
     function frame() {
-      const now = new Date();
+      const simDate = tickSim();
 
-      pos.iss      = satECI(satrecs.iss,      now);
-      pos.tiangong = satECI(satrecs.tiangong, now);
-      pos.moon     = moonECI(now);
+      pos.iss      = satECI(satrecs.iss,      simDate);
+      pos.tiangong = satECI(satrecs.tiangong, simDate);
+      pos.moon     = moonECI(simDate);
 
-      // Refresh Artemis every 5 minutes (async, non-blocking)
-      if (Date.now() - artemisLastFetch > 300_000) {
-        artemisLastFetch = Date.now();
-        fetchArtemis(now).then(p => { if (p) pos.artemis = p; });
+      sampleTrails(simDate);
+
+      // Artemis: only fetch real-time data (don't request a future/fast-sim time)
+      const realNow = Date.now();
+      if (simSpeed <= 10 && realNow - artemisLastFetch > 300_000) {
+        artemisLastFetch = realNow;
+        fetchArtemis(new Date()).then(p => { if (p) pos.artemis = p; });
       }
 
       draw();
+
+      // Update sim clock
+      const d = simDate;
+      clockEl.textContent =
+        `SIM  ${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-` +
+        `${String(d.getUTCDate()).padStart(2,'0')}  ` +
+        `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}:` +
+        `${String(d.getUTCSeconds()).padStart(2,'0')} UTC`;
+
       requestAnimationFrame(frame);
     }
 
@@ -660,12 +704,7 @@
       resize();
 
       statusEl.textContent = 'Fetching orbital data…';
-
-      // Kick off both fetches in parallel
-      const [liveCount, artemisPos] = await Promise.all([
-        fetchTLEs(),
-        fetchArtemis(new Date())
-      ]);
+      const [liveCount, artemisPos] = await Promise.all([fetchTLEs(), fetchArtemis(new Date())]);
       artemisLastFetch = Date.now();
       if (artemisPos) pos.artemis = artemisPos;
 
@@ -673,7 +712,6 @@
       else if (liveCount === 1) statusEl.textContent = `Partial live · ${new Date().toLocaleTimeString()}`;
       else                      statusEl.textContent = 'Offline (using fallback data)';
 
-      // Refresh TLEs hourly
       setInterval(async () => {
         const c = await fetchTLEs();
         if (c > 0) statusEl.textContent = `Live · ${new Date().toLocaleTimeString()}`;
