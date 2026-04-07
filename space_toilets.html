@@ -374,8 +374,14 @@
         REF_PLANE:'FRAME', REF_SYSTEM:'J2000', CSV_FORMAT:'NO'
       });
       const horizonsUrl = `https://ssd.jpl.nasa.gov/api/horizons.api?${params}`;
-      // Try direct first (works on localhost), then fall back to CORS proxy
-      const urls = [horizonsUrl, `https://corsproxy.io/?${horizonsUrl}`];
+      // JPL Horizons has no CORS headers, so proxy it. URL must be encoded so the
+      // proxy doesn't treat Horizons' own ?param=value as its own query parameters.
+      const enc = encodeURIComponent(horizonsUrl);
+      const urls = [
+        horizonsUrl,                                          // direct (works on localhost)
+        `https://corsproxy.io/?${enc}`,                      // corsproxy.io
+        `https://api.allorigins.win/raw?url=${enc}`,         // allorigins fallback
+      ];
       for (const url of urls) {
         try {
           const r = await fetch(url);
