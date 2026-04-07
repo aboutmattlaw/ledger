@@ -360,7 +360,8 @@
                z: ye*Math.sin(eps)+ze*Math.cos(eps), dist };
     }
 
-    // ── Artemis II: JPL Horizons ──────────────────────────────────────────────
+    // ── Artemis II: JPL Horizons (via CORS proxy) ────────────────────────────
+    // JPL Horizons doesn't send CORS headers, so we route through corsproxy.io.
     async function fetchArtemis(date) {
       const pad2 = n => String(n).padStart(2, '0');
       const fmt  = d => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ` +
@@ -372,25 +373,30 @@
         STEP_SIZE:'2 m', VEC_TABLE:'1', OUT_UNITS:'KM-S',
         REF_PLANE:'FRAME', REF_SYSTEM:'J2000', CSV_FORMAT:'NO'
       });
-      try {
-        const r = await fetch(`https://ssd.jpl.nasa.gov/api/horizons.api?${params}`);
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const data = await r.json();
-        const txt  = data.result || '';
-        const soe  = txt.indexOf('$$SOE'), eoe = txt.indexOf('$$EOE');
-        if (soe === -1) throw new Error('no ephemeris');
-        for (const line of txt.slice(soe+5, eoe).trim().split('\n')) {
-          const xm = line.match(/\bX\s*=\s*([+-]?[\d.]+[Ee][+-]?\d+)/);
-          const ym = line.match(/\bY\s*=\s*([+-]?[\d.]+[Ee][+-]?\d+)/);
-          const zm = line.match(/\bZ\s*=\s*([+-]?[\d.]+[Ee][+-]?\d+)/);
-          if (xm && ym && zm) { artemisApprox = false; return { x:+xm[1], y:+ym[1], z:+zm[1] }; }
+      const horizonsUrl = `https://ssd.jpl.nasa.gov/api/horizons.api?${params}`;
+      // Try direct first (works on localhost), then fall back to CORS proxy
+      const urls = [horizonsUrl, `https://corsproxy.io/?${horizonsUrl}`];
+      for (const url of urls) {
+        try {
+          const r = await fetch(url);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const data = await r.json();
+          const txt  = data.result || '';
+          const soe  = txt.indexOf('$$SOE'), eoe = txt.indexOf('$$EOE');
+          if (soe === -1) throw new Error('no ephemeris');
+          for (const line of txt.slice(soe+5, eoe).trim().split('\n')) {
+            const xm = line.match(/\bX\s*=\s*([+-]?[\d.]+[Ee][+-]?\d+)/);
+            const ym = line.match(/\bY\s*=\s*([+-]?[\d.]+[Ee][+-]?\d+)/);
+            const zm = line.match(/\bZ\s*=\s*([+-]?[\d.]+[Ee][+-]?\d+)/);
+            if (xm && ym && zm) { artemisApprox = false; return { x:+xm[1], y:+ym[1], z:+zm[1] }; }
+          }
+          throw new Error('parse failed');
+        } catch (e) {
+          console.warn(`Artemis II fetch failed (${url.slice(0,40)}…):`, e.message);
         }
-        throw new Error('parse failed');
-      } catch (e) {
-        console.warn('Artemis II unavailable:', e.message);
-        artemisApprox = true;
-        return null;
       }
+      artemisApprox = true;
+      return null;
     }
 
     // ── Satellite ECI position ────────────────────────────────────────────────
