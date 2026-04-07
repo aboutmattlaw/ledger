@@ -364,13 +364,14 @@
     // JPL Horizons doesn't send CORS headers, so we route through corsproxy.io.
     async function fetchArtemis(date) {
       const pad2 = n => String(n).padStart(2, '0');
-      const fmt  = d => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ` +
+      // Use T separator — a space gets encoded to + by URLSearchParams which Horizons rejects
+      const fmt  = d => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())}T` +
                         `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
       const stop = new Date(date.getTime() + 120_000);
       const params = new URLSearchParams({
         format:'json', COMMAND:'-1024', OBJ_DATA:'NO', MAKE_EPHEM:'YES',
         EPHEM_TYPE:'VECTORS', CENTER:'500@399', START_TIME:fmt(date), STOP_TIME:fmt(stop),
-        STEP_SIZE:'2 m', VEC_TABLE:'1', OUT_UNITS:'KM-S',
+        STEP_SIZE:'2m', VEC_TABLE:'1', OUT_UNITS:'KM-S',
         REF_PLANE:'FRAME', REF_SYSTEM:'J2000', CSV_FORMAT:'NO'
       });
       const horizonsUrl = `https://ssd.jpl.nasa.gov/api/horizons.api?${params}`;
