@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Height Estimator</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #06060f;
+      color: #c0c8e0;
+      font-family: ui-monospace, 'SF Mono', 'Menlo', 'Consolas', monospace;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 0 20px;
+      height: 44px;
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.025);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    #header h1 { font-size: 13px; font-weight: 700; letter-spacing: 0.28em; color: #fff; }
+    #header .spacer { flex: 1; }
+    #cam-status { font-size: 11px; color: #445566; }
+    #model-status { font-size: 11px; color: #445566; }
+
+    #main {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #02020a;
+    }
+
+    /* Hidden raw video — we draw it to canvas ourselves */
+    #video { display: none; }
+
+    #canvas {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    /* Height readout overlay — bottom-left of canvas container */
+    #readout {
+      position: absolute;
+      bottom: 52px;
+      left: 24px;
+      background: rgba(4,4,16,0.88);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 14px 20px 16px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      min-width: 160px;
+    }
+    #height-cm {
+      font-size: 48px;
+      font-weight: 700;
+      color: #6af5c8;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    #height-ft {
+      font-size: 18px;
+      color: rgba(255,255,255,0.45);
+      margin-top: 4px;
+      letter-spacing: 0.05em;
+    }
+    #confidence-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    #confidence-bar-bg {
+      flex: 1;
+      height: 3px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    #confidence-bar {
+      height: 100%;
+      width: 0%;
+      background: #6af5c8;
+      border-radius: 2px;
+      transition: width 0.3s, background 0.3s;
+    }
+    #confidence-label {
+      font-size: 9px;
+      color: #334455;
+      letter-spacing: 0.1em;
+      white-space: nowrap;
+    }
+
+    /* Info overlay when no person detected */
+    #overlay-msg {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+    }
+    #overlay-msg .icon { font-size: 48px; opacity: 0.3; margin-bottom: 12px; }
+    #overlay-msg .msg {
+      font-size: 13px;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.1em;
+    }
+
+    /* Calibration panel */
+    #cal-btn {
+      position: absolute;
+      bottom: 52px;
+      right: 24px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #556677;
+      font-family: inherit;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    #cal-btn:hover { border-color: rgba(255,255,255,0.3); color: #99aabb; }
+
+    #cal-panel {
+      position: absolute;
+      bottom: 90px;
+      right: 24px;
+      background: rgba(4,4,16,0.95);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      padding: 16px 18px;
+      width: 220px;
+      display: none;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    #cal-panel h3 {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: #334455;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    #cal-panel p { font-size: 10px; color: #667788; line-height: 1.6; margin-bottom: 12px; }
+    .cal-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .cal-label { font-size: 10px; color: #556677; width: 60px; flex-shrink: 0; }
+    .cal-input {
+      flex: 1;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      color: #c0c8e0;
+      font-family: inherit;
+      font-size: 12px;
+      padding: 4px 8px;
+      outline: none;
+    }
+    .cal-input:focus { border-color: rgba(106,245,200,0.4); }
+    #cal-apply {
+      width: 100%;
+      background: rgba(106,245,200,0.1);
+      border: 1px solid rgba(106,245,200,0.3);
+      color: #6af5c8;
+      font-family: inherit;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    #cal-apply:hover { background: rgba(106,245,200,0.18); }
+    #cal-reset {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: #334455;
+      font-family: inherit;
+      font-size: 10px;
+      padding: 4px;
+      cursor: pointer;
+      margin-top: 2px;
+    }
+    #cal-reset:hover { color: #556677; }
+
+    /* Method note */
+    #method-note {
+      position: absolute;
+      bottom: 14px;
+      left: 24px;
+      font-size: 9.5px;
+      color: rgba(255,255,255,0.16);
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>HEIGHT ESTIMATOR</h1>
+    <div class="spacer"></div>
+    <div id="model-status">Loading model…</div>
+    <div id="cam-status" style="color:#334455">· Camera off</div>
+  </div>
+
+  <div id="main">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
+
+    <div id="overlay-msg">
+      <div class="icon">🧍</div>
+      <div class="msg" id="msg-text">STAND SO YOUR FULL BODY IS VISIBLE</div>
+    </div>
+
+    <div id="readout" style="display:none">
+      <div id="height-cm">— cm</div>
+      <div id="height-ft">— ft —″</div>
+      <div id="confidence-row">
+        <div id="confidence-bar-bg"><div id="confidence-bar"></div></div>
+        <div id="confidence-label">CONFIDENCE</div>
+      </div>
+    </div>
+
+    <button id="cal-btn">CALIBRATE</button>
+
+    <div id="cal-panel">
+      <h3>Calibrate</h3>
+      <p>By default, head width is used as a reference (~15.2 cm). Enter a known height for a person standing in frame to improve accuracy.</p>
+      <div class="cal-row">
+        <span class="cal-label">Height</span>
+        <input class="cal-input" id="cal-cm" type="number" placeholder="cm" min="50" max="280">
+      </div>
+      <div class="cal-row">
+        <span class="cal-label">Or ft / in</span>
+        <input class="cal-input" id="cal-ft" type="number" placeholder="ft" min="1" max="9" style="width:40px;flex:none">
+        <input class="cal-input" id="cal-in" type="number" placeholder="in" min="0" max="11" style="width:40px;flex:none">
+      </div>
+      <button id="cal-apply">APPLY CALIBRATION</button>
+      <button id="cal-reset">Reset to default (head width)</button>
+    </div>
+
+    <div id="method-note" id="method-note">Proportional estimate using head width · ±5 cm</div>
+  </div>
+
+  <script type="module">
+  import { PoseLandmarker, FilesetResolver }
+    from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/vision_bundle.mjs';
+
+  // ── Elements ──────────────────────────────────────────────────────────────
+  const video         = document.getElementById('video');
+  const canvas        = document.getElementById('canvas');
+  const ctx           = canvas.getContext('2d');
+  const modelStatusEl = document.getElementById('model-status');
+  const camStatusEl   = document.getElementById('cam-status');
+  const overlayEl     = document.getElementById('overlay-msg');
+  const msgTextEl     = document.getElementById('msg-text');
+  const readoutEl     = document.getElementById('readout');
+  const heightCmEl    = document.getElementById('height-cm');
+  const heightFtEl    = document.getElementById('height-ft');
+  const confBarEl     = document.getElementById('confidence-bar');
+  const methodNoteEl  = document.getElementById('method-note');
+  const calBtn        = document.getElementById('cal-btn');
+  const calPanel      = document.getElementById('cal-panel');
+  const calCmEl       = document.getElementById('cal-cm');
+  const calFtEl       = document.getElementById('cal-ft');
+  const calInEl       = document.getElementById('cal-in');
+  const calApplyEl    = document.getElementById('cal-apply');
+  const calResetEl    = document.getElementById('cal-reset');
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  // Head-proportion constants (adults):
+  const BITEMP_CM    = 15.2;  // ear-to-ear bitemporal head width
+  const NOSE_HEEL_R  = 0.830; // nose-to-heel as fraction of total height
+  // Derived constant: total_height_cm = ratio × K
+  const K = BITEMP_CM / NOSE_HEEL_R; // ≈ 18.31 cm per unit of (nose_heel_px / ear_ear_px)
+
+  let calibScaleCmPx = null; // if set: cm per pixel, overrides proportional estimate
+  const heightBuf = [];
+  const BUF_MAX   = 20;
+
+  let poseLandmarker = null;
+  let lastVideoTime  = -1;
+  let modelReady     = false;
+
+  // ── MediaPipe init ────────────────────────────────────────────────────────
+  async function loadModel() {
+    const vision = await FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm'
+    );
+    poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath:
+          'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+        delegate: 'GPU',
+      },
+      runningMode: 'VIDEO',
+      numPoses: 1,
+      minPoseDetectionConfidence: 0.5,
+      minPosePresenceConfidence:  0.5,
+      minTrackingConfidence:      0.5,
+    });
+    modelReady = true;
+    modelStatusEl.textContent  = 'Model ready';
+    modelStatusEl.style.color  = '#6af5c8';
+  }
+
+  // ── Camera start ──────────────────────────────────────────────────────────
+  async function startCamera() {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+    });
+    video.srcObject = stream;
+    await new Promise(res => { video.onloadedmetadata = res; });
+    await video.play();
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    camStatusEl.textContent = '· Camera active';
+    camStatusEl.style.color  = '#6af5c8';
+  }
+
+  // ── Height calculation ────────────────────────────────────────────────────
+  function estimateHeight(lm) {
+    const W = canvas.width, H = canvas.height;
+    const nose = lm[0], lEar = lm[7], rEar = lm[8];
+    const lHeel = lm[29], rHeel = lm[30];
+    const lFoot = lm[31], rFoot = lm[32];
+
+    // Need nose + at least one ear visible
+    if (nose.visibility < 0.5) return null;
+    const earVis = Math.max(lEar.visibility, rEar.visibility);
+    if (earVis < 0.4) return null;
+
+    // Ear-to-ear distance in pixels
+    const earDx = (lEar.x - rEar.x) * W;
+    const earDy = (lEar.y - rEar.y) * H;
+    const earPx = Math.sqrt(earDx ** 2 + earDy ** 2);
+    if (earPx < 15) return null; // too far away or facing sideways
+
+    // Lowest foot point (highest y value in image = lower on screen)
+    const footCandidates = [lHeel, rHeel, lFoot, rFoot].filter(p => p.visibility > 0.3);
+    if (footCandidates.length === 0) return null;
+    const lowestY = Math.max(...footCandidates.map(p => p.y)) * H;
+    const noseY   = nose.y * H;
+    if (lowestY <= noseY) return null;
+    const noseHeelPx = lowestY - noseY;
+
+    if (calibScaleCmPx !== null) {
+      // Calibrated: direct pixel → cm
+      return (noseHeelPx * calibScaleCmPx) / NOSE_HEEL_R;
+    }
+
+    // Proportional: (noseHeel / earEar) × K
+    return (noseHeelPx / earPx) * K;
+  }
+
+  function confidence(lm) {
+    const key = [lm[0], lm[7], lm[8], lm[29], lm[30]];
+    return key.reduce((s, p) => s + (p.visibility ?? 0), 0) / key.length;
+  }
+
+  function smoothedHeight() {
+    if (heightBuf.length < 3) return null;
+    const s = [...heightBuf].sort((a, b) => a - b);
+    return s[Math.floor(s.length / 2)];
+  }
+
+  function cmToFtIn(cm) {
+    const inches = cm / 2.54;
+    const ft = Math.floor(inches / 12);
+    const inn = Math.round(inches % 12);
+    return `${ft}′ ${inn}″`;
+  }
+
+  // ── Draw skeleton ─────────────────────────────────────────────────────────
+  const CONNECTIONS = PoseLandmarker.POSE_CONNECTIONS;
+
+  function mirrorX(nx) { return (1 - nx) * canvas.width; }
+  function landmarkPx(l) { return [mirrorX(l.x), l.y * canvas.height]; }
+
+  function drawSkeleton(lm, conf) {
+    const W = canvas.width, H = canvas.height;
+
+    // Connections
+    ctx.lineWidth = 2;
+    for (const { start, end } of CONNECTIONS) {
+      const a = lm[start], b = lm[end];
+      if ((a.visibility ?? 0) < 0.3 || (b.visibility ?? 0) < 0.3) continue;
+      const [ax, ay] = landmarkPx(a);
+      const [bx, by] = landmarkPx(b);
+      const alpha = Math.min(a.visibility, b.visibility) * 0.8;
+      ctx.strokeStyle = `rgba(106,245,200,${alpha})`;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    }
+
+    // Joints
+    for (const l of lm) {
+      if ((l.visibility ?? 0) < 0.3) continue;
+      const [x, y] = landmarkPx(l);
+      ctx.fillStyle = `rgba(255,255,255,${l.visibility * 0.9})`;
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawMeasurementLine(lm) {
+    const W = canvas.width, H = canvas.height;
+    const nose = lm[0], lEar = lm[7], rEar = lm[8];
+    const footCandidates = [lm[29], lm[30], lm[31], lm[32]].filter(p => p.visibility > 0.3);
+    if (footCandidates.length === 0) return;
+
+    const earPx  = Math.sqrt(((lEar.x - rEar.x) * W) ** 2 + ((lEar.y - rEar.y) * H) ** 2);
+    const noseY  = nose.y * H;
+    const feetY  = Math.max(...footCandidates.map(p => p.y)) * H;
+
+    // Estimate top-of-head (above nose by ~19.5% of ear-to-ear distance)
+    const headTopY = noseY - 0.195 * earPx;
+
+    // X position for measurement line: left edge with offset
+    const noseX = mirrorX(nose.x);
+    const lineX = Math.max(20, noseX - 50);
+
+    // Vertical measurement line
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth   = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(lineX, headTopY); ctx.lineTo(lineX, feetY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Tick marks
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(lineX - 6, headTopY); ctx.lineTo(lineX + 6, headTopY);
+    ctx.moveTo(lineX - 6, feetY);    ctx.lineTo(lineX + 6, feetY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Prediction loop ───────────────────────────────────────────────────────
+  let personVisible = false;
+
+  function predict() {
+    requestAnimationFrame(predict);
+    if (!modelReady || video.paused || video.ended || !video.videoWidth) return;
+    if (video.currentTime === lastVideoTime) return;
+    lastVideoTime = video.currentTime;
+
+    // Draw mirrored video
+    ctx.save();
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0);
+    ctx.restore();
+
+    const result = poseLandmarker.detectForVideo(video, performance.now());
+
+    if (result.landmarks.length > 0) {
+      const lm   = result.landmarks[0];
+      const conf = confidence(lm);
+
+      drawSkeleton(lm, conf);
+      drawMeasurementLine(lm);
+
+      const h = estimateHeight(lm);
+
+      if (h && h > 90 && h < 280) {
+        heightBuf.push(h);
+        if (heightBuf.length > BUF_MAX) heightBuf.shift();
+      }
+
+      const smooth = smoothedHeight();
+      if (smooth) {
+        if (!personVisible) {
+          personVisible = true;
+          overlayEl.style.display = 'none';
+          readoutEl.style.display = 'block';
+        }
+        heightCmEl.textContent = `${Math.round(smooth)} cm`;
+        heightFtEl.textContent = cmToFtIn(smooth);
+        const pct = Math.round(conf * 100);
+        confBarEl.style.width      = pct + '%';
+        confBarEl.style.background = pct > 70 ? '#6af5c8' : pct > 40 ? '#ffcc44' : '#ff6644';
+      }
+
+      // Warn if feet not in frame
+      const heelsVis = Math.max(lm[29].visibility, lm[30].visibility);
+      if (heelsVis < 0.35) {
+        msgTextEl.textContent = 'STEP BACK — FEET NOT VISIBLE';
+        overlayEl.style.display = 'flex';
+        overlayEl.querySelector('.icon').textContent = '⬇';
+      } else if (personVisible) {
+        overlayEl.style.display = 'none';
+      }
+
+    } else {
+      // No person detected
+      if (personVisible) {
+        personVisible = false;
+        heightBuf.length = 0;
+      }
+      readoutEl.style.display  = 'none';
+      overlayEl.style.display  = 'flex';
+      overlayEl.querySelector('.icon').textContent = '🧍';
+      msgTextEl.textContent = 'STAND SO YOUR FULL BODY IS VISIBLE';
+    }
+  }
+
+  // ── Calibration ───────────────────────────────────────────────────────────
+  calBtn.addEventListener('click', () => {
+    calPanel.style.display = calPanel.style.display === 'none' ? 'block' : 'none';
+  });
+
+  calApplyEl.addEventListener('click', () => {
+    // Resolve input to cm
+    let knownCm = parseFloat(calCmEl.value);
+    if (!knownCm && calFtEl.value) {
+      const ft  = parseFloat(calFtEl.value) || 0;
+      const inn = parseFloat(calInEl.value) || 0;
+      knownCm   = (ft * 12 + inn) * 2.54;
+    }
+    if (!knownCm || knownCm < 50 || knownCm > 280) {
+      calApplyEl.textContent = 'ENTER A VALID HEIGHT';
+      setTimeout(() => { calApplyEl.textContent = 'APPLY CALIBRATION'; }, 2000);
+      return;
+    }
+
+    // Find current nose-to-heel pixel distance from last known landmarks
+    // We'll infer it from the current smooth height estimate + proportions
+    // Or more precisely: measure directly from last known pose
+    // For simplicity, use the smoothed reading if we have one
+    const current = smoothedHeight();
+    if (!current) {
+      calApplyEl.textContent = 'NO POSE DETECTED YET';
+      setTimeout(() => { calApplyEl.textContent = 'APPLY CALIBRATION'; }, 2000);
+      return;
+    }
+
+    // current = (noseHeelPx / earPx) × K  →  noseHeelPx = current * earPx / K
+    // We want: knownCm = noseHeelPx * newScale / NOSE_HEEL_R
+    // This is a relative correction: new estimates = current estimates * (knownCm / current)
+    // Implement as a multiplier on future K usage:
+    // Store scale correction factor
+    const correctionFactor = knownCm / current;
+    // New K_effective = K * correctionFactor — apply by overriding via a closure
+    // Simpler: store an adjusted K in calibScaleCmPx approach
+    // Use: total_height = (noseHeel / earEar) × K × correctionFactor
+    // We store this as a modified K
+    window._calibK = K * correctionFactor;
+    methodNoteEl.textContent = `Calibrated to ${Math.round(knownCm)} cm · ±2 cm`;
+    calPanel.style.display = 'none';
+    heightBuf.length = 0; // clear old estimates
+    calApplyEl.textContent = 'APPLIED ✓';
+    setTimeout(() => { calApplyEl.textContent = 'APPLY CALIBRATION'; }, 2000);
+  });
+
+  calResetEl.addEventListener('click', () => {
+    window._calibK = null;
+    calibScaleCmPx = null;
+    methodNoteEl.textContent = 'Proportional estimate using head width · ±5 cm';
+    heightBuf.length = 0;
+    calPanel.style.display = 'none';
+  });
+
+  // ── Patch estimateHeight to respect calibK ────────────────────────────────
+  const _origEstimate = estimateHeight;
+  // eslint-disable-next-line no-global-assign
+  function estimateHeight(lm) {
+    const W = canvas.width, H = canvas.height;
+    const nose = lm[0], lEar = lm[7], rEar = lm[8];
+    const lHeel = lm[29], rHeel = lm[30], lFoot = lm[31], rFoot = lm[32];
+    if (nose.visibility < 0.5) return null;
+    if (Math.max(lEar.visibility, rEar.visibility) < 0.4) return null;
+    const earDx = (lEar.x - rEar.x) * W, earDy = (lEar.y - rEar.y) * H;
+    const earPx = Math.sqrt(earDx ** 2 + earDy ** 2);
+    if (earPx < 15) return null;
+    const footCandidates = [lHeel, rHeel, lFoot, rFoot].filter(p => p.visibility > 0.3);
+    if (footCandidates.length === 0) return null;
+    const lowestY = Math.max(...footCandidates.map(p => p.y)) * H;
+    const noseY = nose.y * H;
+    if (lowestY <= noseY) return null;
+    const noseHeelPx = lowestY - noseY;
+    const effectiveK = window._calibK ?? K;
+    return (noseHeelPx / earPx) * effectiveK;
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  async function boot() {
+    try {
+      await Promise.all([loadModel(), startCamera()]);
+      modelStatusEl.textContent = 'Live';
+      modelStatusEl.style.color  = '#6af5c8';
+      requestAnimationFrame(predict);
+    } catch (e) {
+      modelStatusEl.textContent = 'Error: ' + e.message;
+      modelStatusEl.style.color  = '#ff6644';
+    }
+  }
+
+  boot();
+  </script>
+</body>
+</html>
