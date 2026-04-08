@@ -314,9 +314,12 @@
     <div id="method-note" id="method-note">Proportional estimate using head width · ±5 cm</div>
   </div>
 
-  <script type="module">
-  import { PoseLandmarker, FilesetResolver }
-    from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/vision_bundle.mjs';
+  <script>
+  // Dynamic import — avoids silent failure of static ES module imports
+  // which would prevent button handlers from ever being attached.
+  let PoseLandmarker = null;
+  let CONNECTIONS_LAZY = null;
+  const MEDIAPIPE_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/vision_bundle.mjs';
 
   // ── Elements ──────────────────────────────────────────────────────────────
   const video         = document.getElementById('video');
@@ -356,6 +359,11 @@
 
   // ── MediaPipe init ────────────────────────────────────────────────────────
   async function loadModel() {
+    const mod = await import(MEDIAPIPE_CDN);
+    PoseLandmarker   = mod.PoseLandmarker;
+    const FilesetResolver = mod.FilesetResolver;
+    CONNECTIONS_LAZY = mod.PoseLandmarker.POSE_CONNECTIONS;
+
     const vision = await FilesetResolver.forVisionTasks(
       'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm'
     );
@@ -444,8 +452,6 @@
   }
 
   // ── Draw skeleton ─────────────────────────────────────────────────────────
-  const CONNECTIONS = PoseLandmarker.POSE_CONNECTIONS;
-
   function mirrorX(nx) { return (1 - nx) * canvas.width; }
   function landmarkPx(l) { return [mirrorX(l.x), l.y * canvas.height]; }
 
@@ -454,7 +460,7 @@
 
     // Connections
     ctx.lineWidth = 2;
-    for (const { start, end } of CONNECTIONS) {
+    for (const { start, end } of (CONNECTIONS_LAZY || [])) {
       const a = lm[start], b = lm[end];
       if ((a.visibility ?? 0) < 0.3 || (b.visibility ?? 0) < 0.3) continue;
       const [ax, ay] = landmarkPx(a);
