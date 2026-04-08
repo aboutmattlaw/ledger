@@ -209,6 +209,54 @@
       color: rgba(255,255,255,0.16);
       letter-spacing: 0.04em;
     }
+
+    /* Start / error screen */
+    #start-screen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      background: #02020a;
+      z-index: 10;
+    }
+    #start-screen .icon { font-size: 56px; opacity: 0.4; }
+    #start-btn {
+      background: rgba(106,245,200,0.1);
+      border: 1px solid rgba(106,245,200,0.35);
+      color: #6af5c8;
+      font-family: inherit;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      padding: 12px 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #start-btn:hover { background: rgba(106,245,200,0.18); }
+    #start-btn:disabled { opacity: 0.4; cursor: default; }
+    #start-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 0.08em;
+      text-align: center;
+      max-width: 280px;
+      line-height: 1.6;
+    }
+    #error-box {
+      display: none;
+      background: rgba(255,60,60,0.08);
+      border: 1px solid rgba(255,60,60,0.3);
+      color: #ff7766;
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 11px;
+      max-width: 340px;
+      text-align: center;
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -222,6 +270,14 @@
   <div id="main">
     <video id="video" autoplay playsinline muted></video>
     <canvas id="canvas"></canvas>
+
+    <!-- Start screen shown until user clicks -->
+    <div id="start-screen">
+      <div class="icon">📷</div>
+      <button id="start-btn">START CAMERA</button>
+      <div id="start-label">Stand so your full body is visible.<br>Camera access will be requested.</div>
+      <div id="error-box"></div>
+    </div>
 
     <div id="overlay-msg">
       <div class="icon">🧍</div>
@@ -599,19 +655,49 @@
   }
 
   // ── Boot ──────────────────────────────────────────────────────────────────
+  const startScreen = document.getElementById('start-screen');
+  const startBtn    = document.getElementById('start-btn');
+  const errorBox    = document.getElementById('error-box');
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.style.display = 'block';
+    startBtn.disabled = false;
+    startBtn.textContent = 'TRY AGAIN';
+    modelStatusEl.textContent = 'Error';
+    modelStatusEl.style.color = '#ff6644';
+  }
+
   async function boot() {
+    startBtn.disabled = true;
+    startBtn.textContent = 'LOADING…';
+    errorBox.style.display = 'none';
+    modelStatusEl.textContent = 'Loading model…';
+    modelStatusEl.style.color = '#445566';
     try {
-      await Promise.all([loadModel(), startCamera()]);
+      // Start camera first so permission prompt appears immediately
+      await startCamera();
+      camStatusEl.textContent = '· Camera active';
+      camStatusEl.style.color  = '#6af5c8';
+      startBtn.textContent = 'LOADING MODEL…';
+      await loadModel();
+      // All ready — hide start screen
+      startScreen.style.display = 'none';
       modelStatusEl.textContent = 'Live';
       modelStatusEl.style.color  = '#6af5c8';
       requestAnimationFrame(predict);
     } catch (e) {
-      modelStatusEl.textContent = 'Error: ' + e.message;
-      modelStatusEl.style.color  = '#ff6644';
+      let msg = e.message || String(e);
+      if (msg.includes('Permission') || msg.includes('NotAllowed') || msg.includes('denied')) {
+        msg = 'Camera access denied. Please allow camera access in your browser settings and try again.';
+      } else if (msg.includes('NotFound') || msg.includes('DevicesNotFound')) {
+        msg = 'No camera found. Please connect a camera and try again.';
+      }
+      showError(msg);
     }
   }
 
-  boot();
+  startBtn.addEventListener('click', boot);
   </script>
 </body>
 </html>
