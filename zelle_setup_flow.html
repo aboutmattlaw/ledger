@@ -693,6 +693,9 @@
   </div>
 
   <script>
+  // ── Embed mode ────────────────────────────────────────────────────────────
+  const IS_EMBED = new URLSearchParams(location.search).has('embed');
+
   // ── State ────────────────────────────────────────────────────────────────
   const DATA = {
     email: 'matthew@example.com',
@@ -998,6 +1001,11 @@
   });
 
   document.getElementById('btn-done').addEventListener('click', () => {
+    if (IS_EMBED) {
+      // Notify parent page that setup is complete, then reset
+      const contact = selected === 'email' ? DATA.email : DATA.phone;
+      window.parent.postMessage({ type: 'zelle-setup-complete', contact }, '*');
+    }
     // Reset for demo re-run
     history = ['setup'];
     selected = null;
@@ -1107,6 +1115,13 @@
   wireToggle('toggle-phone-verified',  'phoneVerified');
 
   // ── Init ──────────────────────────────────────────────────────────────────
+  if (IS_EMBED) {
+    document.querySelector('.controls').style.display = 'none';
+    document.body.style.background     = 'transparent';
+    document.body.style.padding        = '0';
+    document.body.style.alignItems     = 'flex-start';
+    document.body.style.justifyContent = 'flex-start';
+  }
   updateScenario();
   </script>
 </body>

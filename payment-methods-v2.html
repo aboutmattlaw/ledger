@@ -428,6 +428,34 @@
       text-align: center; padding: 28px 0 72px;
       font-size: 12px; color: #b5b0cc; letter-spacing: .03em;
     }
+
+    /* ── Zelle modal ── */
+    .zelle-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.55); z-index: 200;
+      justify-content: center; align-items: center;
+    }
+    .zelle-overlay.active { display: flex; }
+    .zelle-modal-wrap {
+      position: relative;
+      animation: popUp .28s cubic-bezier(.4,0,.2,1) both;
+    }
+    .zelle-iframe {
+      width: 375px; height: 720px;
+      border: none; border-radius: 44px;
+      display: block;
+      box-shadow: 0 28px 80px rgba(0,0,0,.45);
+    }
+    .zelle-modal-close {
+      position: absolute; top: -14px; right: -14px;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #fff; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: #555;
+      box-shadow: 0 2px 8px rgba(0,0,0,.18);
+      line-height: 1;
+    }
+    .zelle-modal-close:hover { background: #f5f5f5; color: #111; }
   </style>
 </head>
 <body>
@@ -576,6 +604,20 @@
           </div>
           <span class="badge-method-selected">✓ Selected</span>
           <button class="method-select-btn" onclick="openPaypalModal()">Select</button>
+        </div>
+
+        <!-- Zelle -->
+        <div class="method-option" id="opt-zelle">
+          <div class="method-icon" style="background:#f3ecff; font-size:20px; font-weight:900; color:#6D1ED4; font-style:italic; justify-content:center;">Z</div>
+          <div class="method-body">
+            <div class="method-name">Zelle</div>
+            <div class="method-desc">Cash Back deposits directly to your bank account once every 3 months — no third-party app required.</div>
+            <div class="method-badges">
+              <span class="badge badge-new">New</span>
+            </div>
+          </div>
+          <span class="badge-method-selected">✓ Selected</span>
+          <button class="method-select-btn" onclick="openZelleModal()">Select</button>
         </div>
 
         <!-- Membership Rewards -->
@@ -753,6 +795,14 @@
   </div>
 </div>
 
+<!-- Zelle setup modal -->
+<div class="zelle-overlay" id="zelleOverlay" onclick="overlayClickZelle(event)">
+  <div class="zelle-modal-wrap">
+    <button class="zelle-modal-close" onclick="closeZelleModal()" title="Close">✕</button>
+    <iframe class="zelle-iframe" id="zelleFrame" src="about:blank"></iframe>
+  </div>
+</div>
+
 <!-- View toggle bar -->
 <div class="view-toggle-bar">
   <span class="view-toggle-label">Preview as:</span>
@@ -844,12 +894,36 @@
     if (e.target === document.getElementById('amexOverlay')) closeAmexModal();
   }
 
+  function openZelleModal() {
+    const frame = document.getElementById('zelleFrame');
+    frame.src = 'zelle_setup_flow.html?embed=1';
+    document.getElementById('zelleOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeZelleModal() {
+    document.getElementById('zelleOverlay').classList.remove('active');
+    document.getElementById('zelleFrame').src = 'about:blank';
+    document.body.style.overflow = '';
+  }
+  function overlayClickZelle(e) {
+    if (e.target === document.getElementById('zelleOverlay')) closeZelleModal();
+  }
+
+  // Listen for Zelle setup completion from the iframe
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'zelle-setup-complete') {
+      selectMethod('zelle');
+      closeZelleModal();
+    }
+  });
+
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       closeCheckModal();
       closeVenmoModal();
       closePaypalModal();
       closeAmexModal();
+      closeZelleModal();
     }
   });
 
