@@ -430,14 +430,23 @@
     }
 
     /* ── Zelle modal ── */
+    /* Backdrop handles click-to-close; overlay is pointer-events:none so it
+       never intercepts clicks meant for the iframe inside it. */
+    .zelle-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.55); z-index: 390;
+      cursor: pointer;
+    }
+    .zelle-backdrop.active { display: block; }
     .zelle-overlay {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,.55); z-index: 400;
+      z-index: 400; pointer-events: none;
       justify-content: center; align-items: center;
     }
     .zelle-overlay.active { display: flex; }
     .zelle-modal-wrap {
       position: relative;
+      pointer-events: auto;
       animation: popUp .28s cubic-bezier(.4,0,.2,1) both;
     }
     .zelle-iframe {
@@ -796,7 +805,8 @@
 </div>
 
 <!-- Zelle setup modal -->
-<div class="zelle-overlay" id="zelleOverlay" onclick="overlayClickZelle(event)">
+<div class="zelle-backdrop" id="zelleBd" onclick="closeZelleModal()"></div>
+<div class="zelle-overlay" id="zelleOverlay">
   <div class="zelle-modal-wrap">
     <button class="zelle-modal-close" onclick="closeZelleModal()" title="Close">✕</button>
     <iframe class="zelle-iframe" id="zelleFrame" src="about:blank"></iframe>
@@ -898,15 +908,14 @@
     const frame = document.getElementById('zelleFrame');
     frame.src = 'zelle_setup_flow.html?embed=1';
     document.getElementById('zelleOverlay').classList.add('active');
+    document.getElementById('zelleBd').classList.add('active');
     document.body.style.overflow = 'hidden';
   }
   function closeZelleModal() {
     document.getElementById('zelleOverlay').classList.remove('active');
+    document.getElementById('zelleBd').classList.remove('active');
     document.getElementById('zelleFrame').src = 'about:blank';
     document.body.style.overflow = '';
-  }
-  function overlayClickZelle(e) {
-    if (e.target === document.getElementById('zelleOverlay')) closeZelleModal();
   }
 
   // Listen for Zelle setup completion from the iframe
