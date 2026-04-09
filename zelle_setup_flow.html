@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zelle Setup Flow</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #f0ecf8;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 48px;
+    }
+
+    /* ── Scenario controls ── */
+    .controls {
+      width: 100%;
+      max-width: 460px;
+      margin-bottom: 28px;
+    }
+    .controls-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: #9980c0;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .controls-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .toggle-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      border: 1px solid #d8cef0;
+      border-radius: 20px;
+      padding: 6px 14px 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #4a3870;
+      user-select: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .toggle-chip:hover { background: #f5f0ff; }
+    .toggle-chip input[type=checkbox] { display: none; }
+    .chip-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #ccc;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .toggle-chip.active .chip-dot { background: #6D1ED4; }
+    .toggle-chip.active { border-color: #b39de0; }
+
+    /* ── Phone shell ── */
+    .phone {
+      width: 375px;
+      min-height: 720px;
+      background: white;
+      border-radius: 44px;
+      box-shadow: 0 20px 60px rgba(109,30,212,0.18), 0 2px 8px rgba(0,0,0,0.08);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Status bar */
+    .status-bar {
+      height: 44px;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      flex-shrink: 0;
+    }
+    .status-bar .time { font-size: 15px; font-weight: 600; color: #111; }
+    .status-bar .icons { font-size: 12px; color: #333; letter-spacing: 2px; }
+
+    /* Nav bar */
+    .nav-bar {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+    .back-btn {
+      background: none;
+      border: none;
+      color: #6D1ED4;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 6px 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-family: inherit;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .back-btn.visible { opacity: 1; pointer-events: all; }
+
+    /* Screen container */
+    .screen-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      padding: 0 24px 32px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.32s;
+      transform: translateX(100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .screen.active {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: all;
+    }
+    .screen.exit-left {
+      transform: translateX(-60px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Progress dots */
+    .progress-dots {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 28px;
+      margin-top: 4px;
+    }
+    .dot {
+      height: 3px;
+      border-radius: 2px;
+      background: #e0d8f0;
+      transition: background 0.3s, width 0.3s;
+    }
+    .dot.done { background: #6D1ED4; }
+    .dot.active { background: #6D1ED4; }
+
+    /* Screen icon */
+    .screen-icon {
+      width: 64px; height: 64px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      font-size: 28px;
+      flex-shrink: 0;
+    }
+    .icon-purple { background: #f0e8ff; }
+    .icon-green  { background: #e6faf3; }
+    .icon-yellow { background: #fff8e1; }
+
+    /* Typography */
+    .screen-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a0a3c;
+      margin-bottom: 8px;
+      line-height: 1.2;
+    }
+    .screen-subtitle {
+      font-size: 14px;
+      color: #7060a0;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    /* Contact option cards */
+    .contact-card {
+      border: 2px solid #e8e0f5;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .contact-card:hover { background: #faf8ff; border-color: #c4b0e8; }
+    .contact-card.selected { border-color: #6D1ED4; background: #f8f4ff; }
+
+    .contact-icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: #f0e8ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .contact-info { flex: 1; min-width: 0; }
+    .contact-type { font-size: 11px; font-weight: 600; color: #9980c0; letter-spacing: 0.06em; text-transform: uppercase; }
+    .contact-value { font-size: 14px; color: #1a0a3c; font-weight: 500; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .status-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 10px;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-verified   { background: #e6faf3; color: #00a870; }
+    .badge-unverified { background: #fff3e0; color: #e07b00; }
+    .badge-action     { background: #f0e8ff; color: #6D1ED4; }
+
+    /* Code destination callout */
+    .callout {
+      background: #f8f4ff;
+      border: 1px solid #d8cef0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .callout-icon { font-size: 20px; flex-shrink: 0; }
+    .callout-text { font-size: 13px; color: #4a3870; line-height: 1.5; }
+    .callout-text strong { color: #1a0a3c; }
+
+    /* OTP inputs */
+    .otp-wrap {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .otp-digit {
+      flex: 1;
+      min-width: 0;
+      height: 48px;
+      border: 2px solid #e0d8f4;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a0a3c;
+      background: white;
+      outline: none;
+      transition: border-color 0.15s;
+      caret-color: transparent;
+      padding: 0;
+    }
+    .otp-digit:focus { border-color: #6D1ED4; }
+    .otp-digit.filled { border-color: #b39de0; background: #faf8ff; }
+    .otp-digit.error  { border-color: #e04040; }
+
+    .otp-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+    .otp-timer { font-size: 12px; color: #9980c0; }
+    .otp-resend { font-size: 12px; color: #6D1ED4; cursor: pointer; font-weight: 600; }
+    .otp-resend:hover { text-decoration: underline; }
+
+    .otp-error-msg {
+      font-size: 12px;
+      color: #e04040;
+      margin-top: -20px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    /* Fine print */
+    .fine-print {
+      font-size: 11.5px;
+      color: #9980c0;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .fine-print a { color: #6D1ED4; text-decoration: none; }
+
+    /* Divider */
+    .divider {
+      border: none;
+      border-top: 1px solid #f0eaf8;
+      margin: 20px 0;
+    }
+
+    /* Info rows */
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #f4f0fb;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row-label { font-size: 13px; color: #7060a0; }
+    .info-row-value { font-size: 13px; font-weight: 600; color: #1a0a3c; }
+
+    /* Spacer */
+    .spacer { flex: 1; }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: inherit;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      letter-spacing: 0.01em;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      background: #6D1ED4;
+      color: white;
+    }
+    .btn-primary:hover { background: #5e18b8; }
+    .btn-primary:disabled { background: #c4b0e8; cursor: default; }
+    .btn-ghost {
+      background: transparent;
+      color: #6D1ED4;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px;
+      margin-top: 6px;
+    }
+    .btn-ghost:hover { background: #f5f0ff; }
+
+    /* Loading screen */
+    .loading-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    .spinner {
+      width: 52px; height: 52px;
+      border: 3px solid #e8dff8;
+      border-top-color: #6D1ED4;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 16px; font-weight: 600; color: #4a3870; }
+
+    /* Success screen */
+    .success-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding-bottom: 40px;
+    }
+    .checkmark-circle {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6D1ED4, #a259e6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .checkmark-circle svg { width: 36px; height: 36px; }
+    .success-title { font-size: 26px; font-weight: 800; color: #1a0a3c; margin-bottom: 10px; }
+    .success-sub { font-size: 14px; color: #7060a0; line-height: 1.6; margin-bottom: 32px; max-width: 260px; }
+    .success-chip {
+      background: #f8f4ff;
+      border: 1px solid #d8cef0;
+      border-radius: 12px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: #1a0a3c;
+      font-weight: 500;
+      margin-bottom: 32px;
+    }
+
+    /* Zelle wordmark area */
+    .zelle-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 28px;
+      flex-shrink: 0;
+    }
+    .zelle-logo {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #6D1ED4 0%, #a259e6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 22px;
+      font-weight: 800;
+      font-style: italic;
+    }
+    .zelle-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: #6D1ED4;
+      letter-spacing: -0.02em;
+    }
+
+    /* Home bar */
+    .home-bar {
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .home-indicator {
+      width: 120px; height: 5px;
+      background: #1a0a3c;
+      border-radius: 3px;
+      opacity: 0.15;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <div class="controls-label">Scenario</div>
+    <div class="controls-grid">
+      <label class="toggle-chip active" id="chip-email-verified">
+        <span class="chip-dot"></span>
+        Email verified
+        <input type="checkbox" checked id="toggle-email-verified">
+      </label>
+      <label class="toggle-chip active" id="chip-phone-available">
+        <span class="chip-dot"></span>
+        Phone available
+        <input type="checkbox" checked id="toggle-phone-available">
+      </label>
+      <label class="toggle-chip" id="chip-phone-verified">
+        <span class="chip-dot"></span>
+        Phone verified
+        <input type="checkbox" id="toggle-phone-verified">
+      </label>
+    </div>
+  </div>
+
+  <div class="phone">
+    <!-- Status bar -->
+    <div class="status-bar">
+      <div class="time">9:41</div>
+      <div class="icons">▲ ◼ ▊</div>
+    </div>
+
+    <!-- Nav -->
+    <div class="nav-bar">
+      <button class="back-btn" id="back-btn">
+        <svg width="9" height="14" viewBox="0 0 9 14" fill="none"><path d="M8 1L2 7L8 13" stroke="#6D1ED4" stroke-width="2" stroke-linecap="round"/></svg>
+        Back
+      </button>
+    </div>
+
+    <!-- Screen container -->
+    <div class="screen-wrap">
+
+      <!-- ── Screen: setup ── -->
+      <div class="screen active" id="screen-setup">
+        <div class="zelle-header">
+          <div class="zelle-logo">Z</div>
+          <div class="zelle-name">Zelle®</div>
+        </div>
+
+        <div class="progress-dots" id="dots-setup"></div>
+
+        <div class="screen-title">Get Paid with Zelle</div>
+        <div class="screen-subtitle">Receive money directly into your bank account — no fees, no waiting.</div>
+
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:#9980c0;text-transform:uppercase;margin-bottom:10px;">Where should payments be sent?</div>
+
+        <div class="contact-card" id="card-email">
+          <div class="contact-icon">✉️</div>
+          <div class="contact-info">
+            <div class="contact-type">Email</div>
+            <div class="contact-value" id="email-value">matthew@example.com</div>
+          </div>
+          <span class="status-badge" id="email-badge">—</span>
+        </div>
+
+        <div class="contact-card" id="card-phone" style="display:none">
+          <div class="contact-icon">📱</div>
+          <div class="contact-info">
+            <div class="contact-type">Mobile Number</div>
+            <div class="contact-value" id="phone-value">+1 (555) 867-5309</div>
+          </div>
+          <span class="status-badge" id="phone-badge">—</span>
+        </div>
+
+        <div class="spacer"></div>
+
+        <button class="btn btn-primary" id="btn-continue-setup" disabled>Continue</button>
+        <p class="fine-print" style="margin-top:14px;text-align:center">
+          By continuing you agree to Zelle's <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+        </p>
+      </div>
+
+      <!-- ── Screen: verify ── -->
+      <div class="screen" id="screen-verify">
+        <div class="progress-dots" id="dots-verify"></div>
+
+        <div class="screen-icon icon-yellow">🔒</div>
+        <div class="screen-title">Verify Your <span id="verify-contact-type">Email</span></div>
+        <div class="screen-subtitle">We need to confirm this belongs to you so payments reach the right person.</div>
+
+        <div class="callout">
+          <div class="callout-icon" id="verify-icon">✉️</div>
+          <div class="callout-text">We'll send a 6-digit code to <strong id="verify-destination">matthew@example.com</strong></div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <button class="btn btn-primary" id="btn-send-code">Send Code</button>
+        <button class="btn btn-ghost" id="btn-use-other" style="display:none">Use a different contact instead</button>
+      </div>
+
+      <!-- ── Screen: enter code ── -->
+      <div class="screen" id="screen-code">
+        <div class="progress-dots" id="dots-code"></div>
+
+        <div class="screen-icon icon-purple">🔑</div>
+        <div class="screen-title">Enter Code</div>
+        <div class="screen-subtitle">Enter the 6-digit code sent to <strong id="code-dest" style="color:#1a0a3c"></strong></div>
+
+        <div class="otp-wrap" id="otp-wrap"></div>
+        <div class="otp-error-msg" id="otp-error">Incorrect code. Please try again.</div>
+        <div class="otp-meta">
+          <span class="otp-timer" id="otp-timer">Expires in 4:59</span>
+          <span class="otp-resend" id="otp-resend">Resend code</span>
+        </div>
+
+        <div class="spacer"></div>
+
+        <button class="btn btn-primary" id="btn-verify-code" disabled>Verify</button>
+      </div>
+
+      <!-- ── Screen: confirm ── -->
+      <div class="screen" id="screen-confirm">
+        <div class="progress-dots" id="dots-confirm"></div>
+
+        <div class="screen-icon icon-purple">⚡</div>
+        <div class="screen-title">Almost Done</div>
+        <div class="screen-subtitle">Payments sent to this contact will deposit directly into your bank account.</div>
+
+        <div style="background:#faf8ff;border:1px solid #e4d8f8;border-radius:14px;padding:16px;margin-bottom:20px;">
+          <div class="info-row">
+            <span class="info-row-label">Contact</span>
+            <span class="info-row-value" id="confirm-contact">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-row-label">Type</span>
+            <span class="info-row-value" id="confirm-type">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-row-label">Status</span>
+            <span class="info-row-value" style="color:#00a870" id="confirm-status">Verified ✓</span>
+          </div>
+        </div>
+
+        <p class="fine-print">
+          Anyone who knows this contact can send you money. Payments deposit automatically to your linked bank account. You can update this in Settings at any time.
+        </p>
+
+        <div class="spacer"></div>
+
+        <button class="btn btn-primary" id="btn-confirm">Set Up Zelle</button>
+      </div>
+
+      <!-- ── Screen: loading ── -->
+      <div class="screen" id="screen-loading">
+        <div class="loading-wrap">
+          <div class="spinner"></div>
+          <div class="loading-text">Setting up Zelle…</div>
+        </div>
+      </div>
+
+      <!-- ── Screen: success ── -->
+      <div class="screen" id="screen-success">
+        <div class="success-wrap">
+          <div class="checkmark-circle">
+            <svg viewBox="0 0 36 36" fill="none">
+              <path d="M8 18L15 25L28 11" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="success-title">You're All Set!</div>
+          <div class="success-sub">Payments sent to you via Zelle will deposit directly into your bank account at:</div>
+          <div class="success-chip">
+            <span id="success-icon">✉️</span>
+            <span id="success-contact">matthew@example.com</span>
+          </div>
+          <button class="btn btn-primary" id="btn-done" style="max-width:280px">Done</button>
+        </div>
+      </div>
+
+    </div><!-- end screen-wrap -->
+
+    <div class="home-bar"><div class="home-indicator"></div></div>
+  </div>
+
+  <script>
+  // ── State ────────────────────────────────────────────────────────────────
+  const DATA = {
+    email: 'matthew@example.com',
+    phone: '+1 (555) 867-5309',
+  };
+
+  const cfg = {
+    emailVerified: true,
+    phoneAvailable: true,
+    phoneVerified: false,
+  };
+
+  let selected = null;    // 'email' | 'phone'
+  let codeTimer = null;
+  let timerSecs = 299;
+  const TOTAL_STEPS = 4; // setup, (verify?), confirm, done
+
+  // ── DOM refs ─────────────────────────────────────────────────────────────
+  const screens = {
+    setup:   document.getElementById('screen-setup'),
+    verify:  document.getElementById('screen-verify'),
+    code:    document.getElementById('screen-code'),
+    confirm: document.getElementById('screen-confirm'),
+    loading: document.getElementById('screen-loading'),
+    success: document.getElementById('screen-success'),
+  };
+  const backBtn = document.getElementById('back-btn');
+
+  // ── Screen navigation ────────────────────────────────────────────────────
+  let history = ['setup'];
+
+  function goTo(id) {
+    const prev = history[history.length - 1];
+    if (prev !== id) history.push(id);
+    applyScreen(prev, id);
+  }
+
+  function goBack() {
+    if (history.length < 2) return;
+    history.pop();
+    const prev = history[history.length - 1];
+    applyScreen(null, prev, true);
+  }
+
+  function applyScreen(fromId, toId, backward = false) {
+    Object.entries(screens).forEach(([id, el]) => {
+      if (id === fromId) {
+        el.classList.remove('active');
+        if (!backward) el.classList.add('exit-left');
+        setTimeout(() => el.classList.remove('exit-left'), 350);
+      } else if (id === toId) {
+        if (backward) el.style.transform = 'translateX(-20px)';
+        el.classList.add('active');
+        el.style.transform = '';
+      } else {
+        el.classList.remove('active', 'exit-left');
+      }
+    });
+
+    // Back button visibility
+    backBtn.classList.toggle('visible', history.length > 1 && toId !== 'loading' && toId !== 'success');
+
+    // Update progress dots
+    refreshDots(toId);
+  }
+
+  // ── Progress dots ────────────────────────────────────────────────────────
+  function refreshDots(screenId) {
+    const needsVerify = selected && !isVerified(selected);
+    const flowSteps = needsVerify
+      ? ['setup', 'verify', 'code', 'confirm', 'success']
+      : ['setup', 'confirm', 'success'];
+
+    const idx = flowSteps.indexOf(screenId);
+    const visible = ['setup', 'verify', 'code', 'confirm'];
+
+    visible.forEach(sid => {
+      const el = document.getElementById('dots-' + sid);
+      if (!el) return;
+      el.innerHTML = '';
+      flowSteps.slice(0, -1).forEach((step, i) => {
+        const d = document.createElement('div');
+        const si = flowSteps.indexOf(screenId);
+        const totalW = 180 / (flowSteps.length - 1);
+        d.className = 'dot' + (i < si ? ' done' : i === si ? ' active' : '');
+        d.style.width = (i === si ? totalW * 1.6 : totalW) + 'px';
+        el.appendChild(d);
+      });
+    });
+  }
+
+  // ── Scenario config ──────────────────────────────────────────────────────
+  function isVerified(contact) {
+    return contact === 'email' ? cfg.emailVerified : cfg.phoneVerified;
+  }
+
+  function updateScenario() {
+    selected = null;
+    document.getElementById('btn-continue-setup').disabled = true;
+    document.getElementById('card-email').classList.remove('selected');
+    document.getElementById('card-phone').classList.remove('selected');
+
+    // Email badge
+    const emailBadge = document.getElementById('email-badge');
+    emailBadge.textContent = cfg.emailVerified ? 'Verified ✓' : 'Unverified';
+    emailBadge.className = 'status-badge ' + (cfg.emailVerified ? 'badge-verified' : 'badge-unverified');
+
+    // Phone card visibility
+    const phoneCard = document.getElementById('card-phone');
+    phoneCard.style.display = cfg.phoneAvailable ? '' : 'none';
+    if (cfg.phoneAvailable) {
+      const phoneBadge = document.getElementById('phone-badge');
+      phoneBadge.textContent = cfg.phoneVerified ? 'Verified ✓' : 'Unverified';
+      phoneBadge.className = 'status-badge ' + (cfg.phoneVerified ? 'badge-verified' : 'badge-unverified');
+    }
+
+    // Reset to setup
+    history = ['setup'];
+    Object.values(screens).forEach(el => el.classList.remove('active', 'exit-left'));
+    screens.setup.classList.add('active');
+    backBtn.classList.remove('visible');
+    refreshDots('setup');
+
+    // Wire "use other contact" button visibility in verify screen
+    document.getElementById('btn-use-other').style.display =
+      cfg.phoneAvailable ? '' : 'none';
+  }
+
+  // ── Contact card selection ────────────────────────────────────────────────
+  function selectContact(type) {
+    selected = type;
+    document.getElementById('card-email').classList.toggle('selected', type === 'email');
+    document.getElementById('card-phone').classList.toggle('selected', type === 'phone');
+    document.getElementById('btn-continue-setup').disabled = false;
+  }
+
+  document.getElementById('card-email').addEventListener('click', () => selectContact('email'));
+  document.getElementById('card-phone').addEventListener('click',  () => {
+    if (cfg.phoneAvailable) selectContact('phone');
+  });
+
+  // ── Setup → next ─────────────────────────────────────────────────────────
+  document.getElementById('btn-continue-setup').addEventListener('click', () => {
+    if (!selected) return;
+    if (!isVerified(selected)) {
+      // Need to verify
+      document.getElementById('verify-contact-type').textContent =
+        selected === 'email' ? 'Email' : 'Mobile Number';
+      document.getElementById('verify-icon').textContent = selected === 'email' ? '✉️' : '📱';
+      document.getElementById('verify-destination').textContent =
+        selected === 'email' ? DATA.email : DATA.phone;
+      goTo('verify');
+    } else {
+      // Already verified → confirm
+      populateConfirm();
+      goTo('confirm');
+    }
+  });
+
+  // ── Verify → send code ───────────────────────────────────────────────────
+  document.getElementById('btn-send-code').addEventListener('click', () => {
+    document.getElementById('code-dest').textContent =
+      selected === 'email' ? DATA.email : DATA.phone;
+    buildOTP();
+    startTimer();
+    goTo('code');
+  });
+
+  document.getElementById('btn-use-other').addEventListener('click', () => {
+    // Switch to the other contact
+    selected = selected === 'email' ? 'phone' : 'email';
+    document.getElementById('verify-contact-type').textContent =
+      selected === 'email' ? 'Email' : 'Mobile Number';
+    document.getElementById('verify-icon').textContent = selected === 'email' ? '✉️' : '📱';
+    document.getElementById('verify-destination').textContent =
+      selected === 'email' ? DATA.email : DATA.phone;
+  });
+
+  // ── OTP input ─────────────────────────────────────────────────────────────
+  function buildOTP() {
+    const wrap = document.getElementById('otp-wrap');
+    wrap.innerHTML = '';
+    for (let i = 0; i < 6; i++) {
+      const inp = document.createElement('input');
+      inp.type = 'tel';
+      inp.maxLength = 1;
+      inp.className = 'otp-digit';
+      inp.dataset.idx = i;
+      inp.setAttribute('inputmode', 'numeric');
+      inp.setAttribute('pattern', '[0-9]');
+      inp.addEventListener('input', onOTPInput);
+      inp.addEventListener('keydown', onOTPKeydown);
+      inp.addEventListener('paste', onOTPPaste);
+      wrap.appendChild(inp);
+    }
+    document.getElementById('btn-verify-code').disabled = true;
+    document.getElementById('otp-error').style.display = 'none';
+  }
+
+  function getDigits() {
+    return [...document.querySelectorAll('.otp-digit')].map(i => i.value).join('');
+  }
+
+  function onOTPInput(e) {
+    const inp = e.target;
+    const val = inp.value.replace(/\D/g, '');
+    inp.value = val.slice(-1);
+    inp.classList.toggle('filled', !!inp.value);
+    document.getElementById('otp-error').style.display = 'none';
+    [...document.querySelectorAll('.otp-digit')].forEach(d => d.classList.remove('error'));
+
+    if (inp.value) {
+      const next = inp.parentElement.children[+inp.dataset.idx + 1];
+      if (next) next.focus();
+    }
+    const filled = getDigits().length === 6;
+    document.getElementById('btn-verify-code').disabled = !filled;
+  }
+
+  function onOTPKeydown(e) {
+    if (e.key === 'Backspace' && !e.target.value) {
+      const prev = e.target.parentElement.children[+e.target.dataset.idx - 1];
+      if (prev) { prev.value = ''; prev.classList.remove('filled'); prev.focus(); }
+    }
+  }
+
+  function onOTPPaste(e) {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const digits = [...document.querySelectorAll('.otp-digit')];
+    text.split('').forEach((ch, i) => {
+      if (digits[i]) { digits[i].value = ch; digits[i].classList.add('filled'); }
+    });
+    if (text.length > 0 && digits[text.length - 1]) digits[text.length - 1].focus();
+    document.getElementById('btn-verify-code').disabled = text.length < 6;
+  }
+
+  // ── Timer ─────────────────────────────────────────────────────────────────
+  function startTimer() {
+    clearInterval(codeTimer);
+    timerSecs = 299;
+    tick();
+    codeTimer = setInterval(tick, 1000);
+  }
+
+  function tick() {
+    const m = Math.floor(timerSecs / 60);
+    const s = timerSecs % 60;
+    document.getElementById('otp-timer').textContent =
+      `Expires in ${m}:${String(s).padStart(2,'0')}`;
+    if (timerSecs <= 0) {
+      clearInterval(codeTimer);
+      document.getElementById('otp-timer').textContent = 'Code expired';
+      document.getElementById('otp-resend').style.fontWeight = '700';
+    }
+    timerSecs--;
+  }
+
+  document.getElementById('otp-resend').addEventListener('click', () => {
+    buildOTP();
+    startTimer();
+    document.querySelector('.otp-digit').focus();
+  });
+
+  // ── Verify code ───────────────────────────────────────────────────────────
+  document.getElementById('btn-verify-code').addEventListener('click', () => {
+    const code = getDigits();
+    // Demo: accept "123456" or any 6-digit code starting with 1 as valid
+    const valid = code === '123456' || code[0] !== '9';
+    if (!valid) {
+      document.querySelectorAll('.otp-digit').forEach(d => d.classList.add('error'));
+      document.getElementById('otp-error').style.display = 'block';
+      return;
+    }
+    clearInterval(codeTimer);
+    populateConfirm(true);
+    goTo('confirm');
+  });
+
+  // ── Confirm screen ────────────────────────────────────────────────────────
+  function populateConfirm(justVerified = false) {
+    const isEmail = selected === 'email';
+    document.getElementById('confirm-contact').textContent =
+      isEmail ? DATA.email : DATA.phone;
+    document.getElementById('confirm-type').textContent =
+      isEmail ? 'Email address' : 'Mobile number';
+    document.getElementById('confirm-status').textContent =
+      justVerified ? 'Just verified ✓' : 'Verified ✓';
+
+    // Success screen values
+    document.getElementById('success-icon').textContent = isEmail ? '✉️' : '📱';
+    document.getElementById('success-contact').textContent =
+      isEmail ? DATA.email : DATA.phone;
+  }
+
+  document.getElementById('btn-confirm').addEventListener('click', () => {
+    goTo('loading');
+    setTimeout(() => goTo('success'), 1800);
+  });
+
+  document.getElementById('btn-done').addEventListener('click', () => {
+    // Reset for demo re-run
+    history = ['setup'];
+    selected = null;
+    updateScenario();
+  });
+
+  // ── Back button ───────────────────────────────────────────────────────────
+  backBtn.addEventListener('click', goBack);
+
+  // ── Scenario toggles ──────────────────────────────────────────────────────
+  function wireToggle(id, key) {
+    const chip = document.getElementById('chip-' + id.replace('toggle-', '').replace(/-/g, '-'));
+    const cb   = document.getElementById(id);
+    cb.addEventListener('change', () => {
+      cfg[key] = cb.checked;
+      chip.classList.toggle('active', cb.checked);
+      // Dependencies: if phone not available, phone-verified is moot
+      if (key === 'phoneAvailable' && !cb.checked) {
+        cfg.phoneVerified = false;
+        document.getElementById('toggle-phone-verified').checked = false;
+        document.getElementById('chip-phone-verified').classList.remove('active');
+      }
+      updateScenario();
+    });
+    chip.addEventListener('click', () => {
+      // toggle is handled by label + checkbox relationship via label click
+    });
+  }
+
+  wireToggle('toggle-email-verified', 'emailVerified');
+  wireToggle('toggle-phone-available', 'phoneAvailable');
+  wireToggle('toggle-phone-verified',  'phoneVerified');
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  updateScenario();
+  </script>
+</body>
+</html>
