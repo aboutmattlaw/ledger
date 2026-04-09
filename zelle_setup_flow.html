@@ -246,6 +246,46 @@
     .callout-text { font-size: 13px; color: #4a3870; line-height: 1.5; }
     .callout-text strong { color: #1a0a3c; }
 
+    /* Change link under contact cards */
+    .change-link {
+      font-size: 11.5px;
+      color: #6D1ED4;
+      cursor: pointer;
+      padding: 4px 2px 10px;
+      display: inline-block;
+      letter-spacing: 0.01em;
+    }
+    .change-link:hover { text-decoration: underline; }
+
+    /* Edit screen input */
+    .edit-input {
+      width: 100%;
+      border: 2px solid #e0d8f4;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 15px;
+      font-family: inherit;
+      color: #1a0a3c;
+      background: white;
+      outline: none;
+      transition: border-color 0.15s;
+      margin-bottom: 8px;
+    }
+    .edit-input:focus { border-color: #6D1ED4; }
+    .edit-input.invalid { border-color: #e04040; }
+    .edit-input-error {
+      font-size: 11.5px;
+      color: #e04040;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .edit-hint {
+      font-size: 12px;
+      color: #9980c0;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
     /* OTP inputs */
     .otp-wrap {
       display: flex;
@@ -514,6 +554,7 @@
           </div>
           <span class="status-badge" id="email-badge">—</span>
         </div>
+        <span class="change-link" id="change-email">Use a different email →</span>
 
         <div class="contact-card" id="card-phone" style="display:none">
           <div class="contact-icon">📱</div>
@@ -523,6 +564,7 @@
           </div>
           <span class="status-badge" id="phone-badge">—</span>
         </div>
+        <span class="change-link" id="change-phone" style="display:none">Use a different mobile number →</span>
 
         <div class="spacer"></div>
 
@@ -629,6 +671,22 @@
         </div>
       </div>
 
+      <!-- ── Screen: edit contact ── -->
+      <div class="screen" id="screen-edit">
+        <div class="screen-icon icon-purple" id="edit-icon-wrap">✉️</div>
+        <div class="screen-title" id="edit-title">Use a Different Email</div>
+        <div class="screen-subtitle" id="edit-subtitle">Enter the email address you'd like to use to receive Zelle payments.</div>
+
+        <input class="edit-input" id="edit-input" type="email" placeholder="you@example.com" autocomplete="email" autocapitalize="none" spellcheck="false">
+        <div class="edit-input-error" id="edit-error">Please enter a valid email address.</div>
+        <p class="edit-hint">This contact will need to be verified before completing setup.</p>
+
+        <div class="spacer"></div>
+
+        <button class="btn btn-primary" id="btn-save-edit">Use This Email</button>
+        <button class="btn btn-ghost" id="btn-cancel-edit">Cancel</button>
+      </div>
+
     </div><!-- end screen-wrap -->
 
     <div class="home-bar"><div class="home-indicator"></div></div>
@@ -660,7 +718,10 @@
     confirm: document.getElementById('screen-confirm'),
     loading: document.getElementById('screen-loading'),
     success: document.getElementById('screen-success'),
+    edit:    document.getElementById('screen-edit'),
   };
+
+  let editingContact = null; // 'email' | 'phone'
   const backBtn = document.getElementById('back-btn');
 
   // ── Screen navigation ────────────────────────────────────────────────────
@@ -745,6 +806,7 @@
     // Phone card visibility
     const phoneCard = document.getElementById('card-phone');
     phoneCard.style.display = cfg.phoneAvailable ? '' : 'none';
+    document.getElementById('change-phone').style.display = cfg.phoneAvailable ? '' : 'none';
     if (cfg.phoneAvailable) {
       const phoneBadge = document.getElementById('phone-badge');
       phoneBadge.textContent = cfg.phoneVerified ? 'Verified ✓' : 'Unverified';
@@ -944,6 +1006,81 @@
 
   // ── Back button ───────────────────────────────────────────────────────────
   backBtn.addEventListener('click', goBack);
+
+  // ── Edit contact ─────────────────────────────────────────────────────────
+  function openEdit(type) {
+    editingContact = type;
+    const isEmail = type === 'email';
+    document.getElementById('edit-icon-wrap').textContent = isEmail ? '✉️' : '📱';
+    document.getElementById('edit-title').textContent =
+      isEmail ? 'Use a Different Email' : 'Use a Different Mobile Number';
+    document.getElementById('edit-subtitle').textContent = isEmail
+      ? 'Enter the email address you'd like to use to receive Zelle payments.'
+      : 'Enter the U.S. mobile number you'd like to use to receive Zelle payments.';
+    const inp = document.getElementById('edit-input');
+    inp.type        = isEmail ? 'email' : 'tel';
+    inp.placeholder = isEmail ? 'you@example.com' : '+1 (555) 000-0000';
+    inp.autocomplete = isEmail ? 'email' : 'tel';
+    inp.value       = '';
+    inp.classList.remove('invalid');
+    document.getElementById('edit-error').style.display = 'none';
+    document.getElementById('btn-save-edit').textContent =
+      isEmail ? 'Use This Email' : 'Use This Number';
+    goTo('edit');
+    setTimeout(() => inp.focus(), 320);
+  }
+
+  document.getElementById('change-email').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openEdit('email');
+  });
+  document.getElementById('change-phone').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openEdit('phone');
+  });
+
+  function validateEdit(value, type) {
+    if (type === 'email') return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+    // Basic US phone: allow various formats, must have 10 digits
+    return value.replace(/\D/g, '').length >= 10;
+  }
+
+  document.getElementById('btn-save-edit').addEventListener('click', () => {
+    const inp   = document.getElementById('edit-input');
+    const value = inp.value.trim();
+    const errEl = document.getElementById('edit-error');
+    if (!validateEdit(value, editingContact)) {
+      inp.classList.add('invalid');
+      errEl.textContent = editingContact === 'email'
+        ? 'Please enter a valid email address.'
+        : 'Please enter a valid U.S. mobile number.';
+      errEl.style.display = 'block';
+      return;
+    }
+    // Save new value and mark as unverified
+    if (editingContact === 'email') {
+      DATA.email = value;
+      cfg.emailVerified = false;
+      document.getElementById('email-value').textContent = value;
+    } else {
+      DATA.phone = value;
+      cfg.phoneVerified = false;
+      document.getElementById('phone-value').textContent = value;
+    }
+    // Refresh badges without resetting selection
+    const badge = document.getElementById(editingContact + '-badge');
+    badge.textContent = 'Unverified';
+    badge.className   = 'status-badge badge-unverified';
+    // If this was the selected contact, keep it selected
+    goBack();
+  });
+
+  document.getElementById('btn-cancel-edit').addEventListener('click', goBack);
+
+  document.getElementById('edit-input').addEventListener('input', () => {
+    document.getElementById('edit-input').classList.remove('invalid');
+    document.getElementById('edit-error').style.display = 'none';
+  });
 
   // ── Scenario toggles ──────────────────────────────────────────────────────
   function wireToggle(id, key) {
