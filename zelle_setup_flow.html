@@ -1023,8 +1023,8 @@
     document.getElementById('edit-title').textContent =
       isEmail ? 'Use a Different Email' : 'Use a Different Mobile Number';
     document.getElementById('edit-subtitle').textContent = isEmail
-      ? 'Enter the email address you'd like to use to receive Zelle payments.'
-      : 'Enter the U.S. mobile number you'd like to use to receive Zelle payments.';
+      ? "Enter the email address you'd like to use to receive Zelle payments."
+      : "Enter the U.S. mobile number you'd like to use to receive Zelle payments.";
     const inp = document.getElementById('edit-input');
     inp.type        = isEmail ? 'email' : 'tel';
     inp.placeholder = isEmail ? 'you@example.com' : '+1 (555) 000-0000';
